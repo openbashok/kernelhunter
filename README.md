@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 What KernelHunter Does
+## What KernelHunter Does
 
 KernelHunter operates by generating random shellcodes, compiling and executing them in a controlled environment, and analyzing the results for crashes and anomalies. It captures low-level execution failures such as segmentation faults (SIGSEGV), illegal instructions (SIGILL), floating-point exceptions (SIGFPE), and traps (SIGTRAP), classifying and prioritizing them based on severity and impact.
 
@@ -12,7 +12,7 @@ What sets KernelHunter apart is its evolutionary engine. Rather than relying on 
 
 ---
 
-## 🪡 Key Features
+## Key Features
 
 - Generation and mutation of x86_64 shellcodes
 - Safe execution of binaries with timeout control
@@ -28,7 +28,7 @@ What sets KernelHunter apart is its evolutionary engine. Rather than relying on 
 
 ---
 
-## 🧠 Why It's Useful
+## Why It's Useful
 
 KernelHunter provides a practical, autonomous approach to exploring how low-level input (shellcode) can destabilize an operating system or uncover flaws in the kernel’s memory handling. It’s ideal for:
 
@@ -41,7 +41,7 @@ Because it doesn't rely on any hardcoded corpus or known exploit templates, Kern
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 $ python kernelhunter.py
@@ -50,7 +50,7 @@ $ python kernelhunter.py
 
 
 
-## 📊 Sample Output
+## Sample Output
 
 ```text
 kernelhunter@localhost:~/demo2$ kernelhunter
