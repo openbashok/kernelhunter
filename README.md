@@ -41,6 +41,34 @@ Because it doesn't rely on any hardcoded corpus or known exploit templates, Kern
 
 ---
 
+
+## Installation
+
+KernelHunter is a standalone Python script and can be installed without root access.
+
+> ⚠️ **WARNING:** It is strongly recommended to **never run KernelHunter as root**. Fuzzing shellcode with elevated privileges can lead to complete system compromise.
+
+### Step-by-step Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/openbashok/kernelhunter
+cd kernelhunter
+
+# 2. Run the installer (no root required)
+./install_kernelhunter.sh
+
+# 3. (Optional) Restart your terminal or run:
+source ~/.bashrc
+
+# 4. Run it from anywhere:
+kernelhunter
+```
+
+After installation, KernelHunter will be available globally for the current user under `~/.local/bin/kernelhunter`.
+
+
+
 ## Quick Start
 
 ```bash
