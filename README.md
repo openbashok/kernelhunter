@@ -193,12 +193,45 @@ You should see:
 
 ---
 
+Sí, absolutamente. Es importante especificar claramente en el README avanzado cómo habilitar esta configuración, dado que muchos sistemas Linux modernos restringen el acceso por defecto.
+
+Aquí tienes una sección lista para agregar a tu **README avanzado** en GitHub:
+
+---
+
+## ⚙️ Advanced Usage: Kernel Log Access (`dmesg`)
+
+To enable **KernelHunter** to analyze kernel-level events without needing root privileges on each execution, it's recommended to adjust kernel log permissions.
+
+By default, Linux restricts `dmesg` output for non-root users. To grant read-only access to kernel logs for the `kernelhunter` user, execute:
+
+```bash
+sudo sysctl -w kernel.dmesg_restrict=0
+```
+
+### ⚠️ Permanent Configuration (Recommended):
+
+To make this setting persistent across reboots, add the following line to `/etc/sysctl.conf` or create a new file under `/etc/sysctl.d/` (e.g., `/etc/sysctl.d/99-kernelhunter.conf`):
+
+```bash
+kernel.dmesg_restrict=0
+```
+
+Then apply the changes immediately by running:
+
+```bash
+sudo sysctl -p
+```
+
+---
+
+Esto le proporciona claridad al usuario sobre el requisito y cómo configurarlo de manera segura y persistente.
+
 ### Usage After Configuration
 
 Once configured, KernelHunter will:
 
 - Read kernel logs directly with `dmesg`.
-- Isolate test executions using namespaces (`unshare`), enabling deeper and more precise crash diagnostics.
 
 ### ⚠️ Security Warning
 
