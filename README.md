@@ -135,23 +135,5 @@ Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
 ```
 
 
-```
-## Advanced Usage - Enable bpftrace Monitoring
-
-For deeper kernel-level monitoring using **bpftrace**, ensure the user `kernelhunter` has the necessary permissions:
-
-```bash
-sudo visudo
-```
-
-Then add:
-
-```bash
-kernelhunter ALL=(root) NOPASSWD: /usr/bin/bpftrace
-```
-
-This allows KernelHunter to leverage enhanced kernel monitoring.
-```
-
 
 
