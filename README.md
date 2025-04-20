@@ -134,7 +134,79 @@ Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
 [GEN 1] Crash types: {'SIGNAL_SIGSEGV': 11, 'SIGNAL_SIGILL': 5}
 ```
 
+Aquí tenés una sección lista para agregar al README.md en GitHub, bien clara y completa:  
 
+---
+
+## Advanced Usage (Kernel-level Crash Detection)
+
+KernelHunter can optionally leverage kernel logging and namespace isolation to achieve deeper inspection of crashes and potential system-level impacts. This requires special permissions and is recommended only in development or dedicated research environments.
+
+### Granting Necessary Permissions
+
+To enable advanced functionality, execute the following steps as the root user or with sudo privileges:
+
+**1. Allow passwordless execution of `dmesg`:**
+
+Edit the sudoers configuration:
+
+```bash
+sudo visudo
+```
+
+Add the following line at the bottom:
+
+```bash
+kernelhunter ALL=(ALL) NOPASSWD: /usr/bin/dmesg
+```
+
+Replace `kernelhunter` with the actual username if different.
+
+---
+
+**2. Grant special capabilities (`CAP_SYSLOG` and `CAP_SYS_ADMIN`) to the Python interpreter:**
+
+Assign capabilities directly to your Python binary (replace `python3` with your specific interpreter path if needed):
+
+```bash
+sudo setcap cap_syslog,cap_sys_admin+ep $(readlink -f $(which python3))
+```
+
+⚠️ **Important Note:**  
+- After updating or reinstalling Python, you'll need to reapply this command.
+
+---
+
+**3. Verify capability assignment:**
+
+Confirm capabilities have been correctly assigned:
+
+```bash
+getcap $(readlink -f $(which python3))
+```
+
+You should see:
+
+```
+/usr/bin/python3 cap_sys_admin,cap_syslog=ep
+```
+
+---
+
+### Usage After Configuration
+
+Once configured, KernelHunter will:
+
+- Read kernel logs directly with `dmesg`.
+- Isolate test executions using namespaces (`unshare`), enabling deeper and more precise crash diagnostics.
+
+### ⚠️ Security Warning
+
+This configuration grants powerful system-level capabilities.  
+- **Do NOT apply these steps to production or sensitive systems.**  
+- Prefer dedicated, isolated, or containerized research environments.
+
+---
 
 ## Legal Notice
 This tool is intended strictly for research and educational purposes. Do **not** use it against systems for which you do not have explicit authorization.
