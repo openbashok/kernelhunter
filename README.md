@@ -134,115 +134,24 @@ Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
 [GEN 1] Crash types: {'SIGNAL_SIGSEGV': 11, 'SIGNAL_SIGILL': 5}
 ```
 
-Aquí tenés una sección lista para agregar al README.md en GitHub, bien clara y completa:  
 
----
+```
+## Advanced Usage - Enable bpftrace Monitoring
 
-## Advanced Usage (Kernel-level Crash Detection)
-
-KernelHunter can optionally leverage kernel logging and namespace isolation to achieve deeper inspection of crashes and potential system-level impacts. This requires special permissions and is recommended only in development or dedicated research environments.
-
-### Granting Necessary Permissions
-
-To enable advanced functionality, execute the following steps as the root user or with sudo privileges:
-
-**1. Allow passwordless execution of `dmesg`:**
-
-Edit the sudoers configuration:
+For deeper kernel-level monitoring using **bpftrace**, ensure the user `kernelhunter` has the necessary permissions:
 
 ```bash
 sudo visudo
 ```
 
-Add the following line at the bottom:
+Then add:
 
 ```bash
-kernelhunter ALL=(ALL) NOPASSWD: /usr/bin/dmesg
+kernelhunter ALL=(root) NOPASSWD: /usr/bin/bpftrace
 ```
 
-Replace `kernelhunter` with the actual username if different.
-
----
-
-**2. Grant special capabilities (`CAP_SYSLOG` and `CAP_SYS_ADMIN`) to the Python interpreter:**
-
-Assign capabilities directly to your Python binary (replace `python3` with your specific interpreter path if needed):
-
-```bash
-sudo setcap cap_syslog,cap_sys_admin+ep $(readlink -f $(which python3))
+This allows KernelHunter to leverage enhanced kernel monitoring.
 ```
-
-⚠️ **Important Note:**  
-- After updating or reinstalling Python, you'll need to reapply this command.
-
----
-
-**3. Verify capability assignment:**
-
-Confirm capabilities have been correctly assigned:
-
-```bash
-getcap $(readlink -f $(which python3))
-```
-
-You should see:
-
-```
-/usr/bin/python3 cap_sys_admin,cap_syslog=ep
-```
-
----
-
-Sí, absolutamente. Es importante especificar claramente en el README avanzado cómo habilitar esta configuración, dado que muchos sistemas Linux modernos restringen el acceso por defecto.
-
-Aquí tienes una sección lista para agregar a tu **README avanzado** en GitHub:
-
----
-
-## ⚙️ Advanced Usage: Kernel Log Access (`dmesg`)
-
-To enable **KernelHunter** to analyze kernel-level events without needing root privileges on each execution, it's recommended to adjust kernel log permissions.
-
-By default, Linux restricts `dmesg` output for non-root users. To grant read-only access to kernel logs for the `kernelhunter` user, execute:
-
-```bash
-sudo sysctl -w kernel.dmesg_restrict=0
-```
-
-### ⚠️ Permanent Configuration (Recommended):
-
-To make this setting persistent across reboots, add the following line to `/etc/sysctl.conf` or create a new file under `/etc/sysctl.d/` (e.g., `/etc/sysctl.d/99-kernelhunter.conf`):
-
-```bash
-kernel.dmesg_restrict=0
-```
-
-Then apply the changes immediately by running:
-
-```bash
-sudo sysctl -p
-```
-
----
-
-Esto le proporciona claridad al usuario sobre el requisito y cómo configurarlo de manera segura y persistente.
-
-### Usage After Configuration
-
-Once configured, KernelHunter will:
-
-- Read kernel logs directly with `dmesg`.
-
-### ⚠️ Security Warning
-
-This configuration grants powerful system-level capabilities.  
-- **Do NOT apply these steps to production or sensitive systems.**  
-- Prefer dedicated, isolated, or containerized research environments.
-
----
-
-## Legal Notice
-This tool is intended strictly for research and educational purposes. Do **not** use it against systems for which you do not have explicit authorization.
 
 
 
