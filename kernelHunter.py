@@ -25,6 +25,7 @@ from dma_confusion import generate_dma_confusion_fragment
 from duplication_mutation import duplicate_fragment
 from entropy_drain_attack import generate_entropy_drain_fragment
 from external_adn import get_random_fragment_from_bin
+from extract_function_adn import get_function_or_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -236,6 +237,7 @@ def generate_random_instruction():
         "dma_confusion",
         "entropy_drain",
         "external_adn",
+        "function_adn",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -243,7 +245,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 78]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 77]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -302,6 +304,9 @@ def generate_random_instruction():
     
     elif choice_type == "external_adn":
         return get_random_fragment_from_bin()
+    
+    elif choice_type == "function_adn":
+        return get_function_or_fragment()
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
