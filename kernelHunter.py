@@ -15,6 +15,7 @@ from random import randint, choice
 from collections import Counter
 from genetic_reservoir import GeneticReservoir
 from memory_pressure_mutation import generate_memory_pressure_fragment
+from advanced_crossover import crossover_shellcodes_advanced
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -723,7 +724,12 @@ def run_generation(gen_id, base_population):
             else:
                 parent = choice(base_population)
 
-            shellcode = mutate_shellcode(parent)
+            if random.random() < 0.3:
+                other_parent = choice(base_population)
+                shellcode = crossover_shellcodes_advanced(parent, other_parent)
+            else:
+                shellcode = mutate_shellcode(parent)
+            
             shellcode_c = format_shellcode_c_array(shellcode)
             shellcode_lengths.append(len(shellcode))
 
