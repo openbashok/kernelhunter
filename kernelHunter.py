@@ -674,8 +674,9 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "modify",   # Modificar instrucción existente
         "duplicate", # Duplicar sección
         "mass_duplicate", # Duplicación avanzada
+        "invert",  # Invertir fragmentos
         "crispr"    # Edición dirigida de syscalls
-    ], weights=[40, 20, 20, 1, 2, 17])[0]
+    ], weights=[40, 20, 20, 1, 2, 15,2])[0]
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -688,7 +689,11 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         remove_start = randint(0, len(core) - 4)
         remove_length = randint(1, min(4, len(core) - remove_start))
         new_core = core[:remove_start] + core[remove_start + remove_length:]
-
+    
+    elif mutation_type == "invert" and len(core) >= 4:
+        # Invertir un fragmento aleatorio del shellcode
+        new_core = invert_fragment(core)
+        
     elif mutation_type == "modify" and core:
         # Modificar un byte existente
         mod_pos = randint(0, len(core) - 1)
