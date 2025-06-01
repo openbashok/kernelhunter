@@ -31,6 +31,7 @@ from gene_bank import get_random_gene
 from gene_bank_advanced_v2 import get_random_gene_dynamic
 from hyper_advanced_memory_corruptor import generate_hyper_advanced_corruptor_fragment
 from interrupt_storm import generate_interrupt_storm_fragment
+from inversion_mutation import invert_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
