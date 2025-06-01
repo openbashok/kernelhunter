@@ -22,6 +22,7 @@ from control_flow_traps import generate_control_flow_trap_fragment
 from crispr_mutation import crispr_edit_shellcode
 from deep_rop_chain_generator import generate_deep_rop_chain_fragment
 from dma_confusion import generate_dma_confusion_fragment
+from duplication_mutation import duplicate_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -630,8 +631,9 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "remove",   # Quitar instrucción
         "modify",   # Modificar instrucción existente
         "duplicate", # Duplicar sección
+        "mass_duplicate", # Duplicación avanzada
         "crispr"    # Edición dirigida de syscalls
-    ], weights=[40, 20, 20, 1, 19])[0]
+    ], weights=[40, 20, 20, 1, 2, 17])[0]
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -660,6 +662,10 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         dup_section = core[dup_start:dup_start + dup_length]
         insert_pos = randint(0, len(core))
         new_core = core[:insert_pos] + dup_section + core[insert_pos:]
+    
+    elif mutation_type == "mass_duplicate" and len(core) >= 4:
+        # Usar rutina avanzada de duplicación
+        new_core = duplicate_fragment(core)
     
     elif mutation_type == "crispr" and core:
         # Edición específica de syscalls mediante CRISPR
