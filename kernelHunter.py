@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # KernelHunter - Fuzzer evolutivo para encontrar vulnerabilidades en el sistema operativo
-#
+# Mariano Somoza
 # Un enfoque evolutivo para generar shellcodes que potencialmente puedan impactar
 # la estabilidad del sistema operativo.
 
