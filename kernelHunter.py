@@ -29,6 +29,7 @@ from extract_function_adn import get_function_or_fragment
 from filesystem_chaos import generate_filesystem_chaos_fragment
 from gene_bank import get_random_gene
 from gene_bank_advanced_v2 import get_random_gene_dynamic
+from hyper_advanced_memory_corruptor import generate_hyper_advanced_corruptor_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -244,6 +245,7 @@ def generate_random_instruction():
         "filesystem_chaos",
         "gene_bank",
         "gene_bank_dynamic",
+        "hyper_corruptor",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -251,7 +253,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,74]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,73]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -322,6 +324,9 @@ def generate_random_instruction():
         
     elif choice_type == "gene_bank_dynamic":
         return get_random_gene_dynamic()
+        
+    elif choice_type == "hyper_corruptor":
+        return generate_hyper_advanced_corruptor_fragment(min_ops=15, max_ops=30)
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
