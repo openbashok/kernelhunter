@@ -4,6 +4,7 @@
 # Un enfoque evolutivo para generar shellcodes que potencialmente puedan impactar
 # la estabilidad del sistema operativo.
 
+
 import os
 import subprocess
 import random
