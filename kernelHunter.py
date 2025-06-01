@@ -335,7 +335,9 @@ def generate_random_instruction():
     
     elif choice_type == "interrupt_storm":
         return generate_interrupt_storm_fragment(min_interrupts=5, max_interrupts=15)        
-    
+    elif choice_type == "ipc_stress":
+        return generate_ipc_stress_fragment(min_ops=5, max_ops=15)
+        
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
