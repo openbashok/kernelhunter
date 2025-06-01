@@ -14,6 +14,7 @@ import json
 from random import randint, choice
 from collections import Counter
 from genetic_reservoir import GeneticReservoir
+from memory_pressure_mutation import generate_memory_pressure_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -218,6 +219,7 @@ def generate_random_instruction():
         "control_registers", # registros de control CPU
         "stack_manipulation", # manipulación del stack
         "full_kernel_syscall", #todas las syscalls disponicles del kernel
+        "memory_pressure",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -282,7 +284,10 @@ def generate_random_instruction():
         instr = random.choice(mem_instructions)
         # Añadir bytes aleatorios como operandos
         return instr + bytes([randint(0, 255) for _ in range(randint(1, 3))])
-
+    
+    elif choice_type == "memory_pressure":
+    return generate_memory_pressure_fragment(min_ops=1, max_ops=3)
+    
     elif choice_type == "privileged":
         # Instrucciones privilegiadas o que podrían causar excepciones
         privileged_instructions = [
