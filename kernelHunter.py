@@ -225,7 +225,7 @@ def generate_random_instruction():
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
     #weights = [5, 0, 30, 0, 20, 0, 0, 5, 0, 30]  # Probabilidades relativas
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
-    weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 25]
+    weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 20,5]
 
     choice_type = random.choices(options, weights=weights)[0]
 
