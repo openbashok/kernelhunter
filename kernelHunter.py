@@ -24,6 +24,7 @@ from deep_rop_chain_generator import generate_deep_rop_chain_fragment
 from dma_confusion import generate_dma_confusion_fragment
 from duplication_mutation import duplicate_fragment
 from entropy_drain_attack import generate_entropy_drain_fragment
+from external_adn import get_random_fragment_from_bin
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -234,13 +235,16 @@ def generate_random_instruction():
         "deep_rop_chain",
         "dma_confusion",
         "entropy_drain",
+        "external_adn",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
     #weights = [5, 0, 30, 0, 20, 0, 0, 5, 0, 30]  # Probabilidades relativas
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
-    weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 78]
+
     choice_type = random.choices(options, weights=weights)[0]
 
     if choice_type == "random_bytes":
@@ -295,6 +299,9 @@ def generate_random_instruction():
     
     elif choice_type == "entropy_drain":
         return generate_entropy_drain_fragment(min_ops=5, max_ops=20)
+    
+    elif choice_type == "external_adn":
+        return get_random_fragment_from_bin()
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
