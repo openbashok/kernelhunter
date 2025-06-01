@@ -16,6 +16,7 @@ from collections import Counter
 from genetic_reservoir import GeneticReservoir
 from memory_pressure_mutation import generate_memory_pressure_fragment
 from advanced_crossover import crossover_shellcodes_advanced
+from cache_pollution_attack import generate_cache_pollution_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -221,12 +222,13 @@ def generate_random_instruction():
         "stack_manipulation", # manipulación del stack
         "full_kernel_syscall", #todas las syscalls disponicles del kernel
         "memory_pressure",
+        "cache_pollution",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
     #weights = [5, 0, 30, 0, 20, 0, 0, 5, 0, 30]  # Probabilidades relativas
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
-    weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 20,5]
+    weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15,5,5]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -267,6 +269,9 @@ def generate_random_instruction():
 
     elif choice_type == "syscall":
         return SYSCALL_PATTERN
+        
+    elif choice_type == "cache_pollution":
+        return generate_cache_pollution_fragment(min_ops=5, max_ops=15)
 
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
