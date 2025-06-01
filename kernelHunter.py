@@ -21,6 +21,7 @@ from cache_pollution_attack import generate_cache_pollution_fragment
 from control_flow_traps import generate_control_flow_trap_fragment
 from crispr_mutation import crispr_edit_shellcode
 from deep_rop_chain_generator import generate_deep_rop_chain_fragment
+from dma_confusion import generate_dma_confusion_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -228,14 +229,15 @@ def generate_random_instruction():
         "memory_pressure",
         "cache_pollution",
         "control_flow_trap",
-         "deep_rop_chain",
+        "deep_rop_chain",
+        "dma_confusion",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
     #weights = [5, 0, 30, 0, 20, 0, 0, 5, 0, 30]  # Probabilidades relativas
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
-    weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+    weights = [5, 5, 5, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,5]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -285,6 +287,9 @@ def generate_random_instruction():
     
     elif choice_type == "deep_rop_chain":
         return generate_deep_rop_chain_fragment(min_gadgets=4, max_gadgets=10)
+	
+    elif choice_type == "dma_confusion":
+		return generate_dma_confusion_fragment(min_ops=4, max_ops=10)
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
