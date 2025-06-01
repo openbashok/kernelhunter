@@ -286,7 +286,7 @@ def generate_random_instruction():
         return instr + bytes([randint(0, 255) for _ in range(randint(1, 3))])
     
     elif choice_type == "memory_pressure":
-    return generate_memory_pressure_fragment(min_ops=1, max_ops=3)
+        return generate_memory_pressure_fragment(min_ops=1, max_ops=3)
     
     elif choice_type == "privileged":
         # Instrucciones privilegiadas o que podrían causar excepciones
