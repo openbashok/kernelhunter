@@ -287,9 +287,9 @@ def generate_random_instruction():
     
     elif choice_type == "deep_rop_chain":
         return generate_deep_rop_chain_fragment(min_gadgets=4, max_gadgets=10)
-	
+    
     elif choice_type == "dma_confusion":
-		return generate_dma_confusion_fragment(min_ops=4, max_ops=10)
+	return generate_dma_confusion_fragment(min_ops=4, max_ops=10)
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
