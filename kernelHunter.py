@@ -27,6 +27,7 @@ from entropy_drain_attack import generate_entropy_drain_fragment
 from external_adn import get_random_fragment_from_bin
 from extract_function_adn import get_function_or_fragment
 from filesystem_chaos import generate_filesystem_chaos_fragment
+from gene_bank import get_random_gene
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -240,6 +241,7 @@ def generate_random_instruction():
         "external_adn",
         "function_adn",
         "filesystem_chaos",
+        "gene_bank",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -247,7 +249,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,76]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,75]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -312,7 +314,10 @@ def generate_random_instruction():
     
     elif choice_type == "filesystem_chaos":
         return generate_filesystem_chaos_fragment(min_ops=5, max_ops=20)
-        
+    
+    elif choice_type == "gene_bank":
+        return get_random_gene()
+    
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
