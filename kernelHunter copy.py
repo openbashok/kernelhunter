@@ -724,194 +724,35 @@ def run_generation(gen_id, base_population):
 
             # Generar el programa C con el shellcode
             # Generar el programa C con el shellcode
-            # Stub modular en C
             stub = f"""
             #include <stdio.h>
             #include <stdlib.h>
             #include <sys/mman.h>
             #include <string.h>
             #include <unistd.h>
-            #include <sys/socket.h>
-            #include <netinet/in.h>
-            #include <arpa/inet.h>
-
-            #define FUNC_SOCKET    500
-            #define FUNC_CONNECT   501
-            #define FUNC_LISTEN    502
-            #define FUNC_SEND      503
-            #define FUNC_RECV      504
-            #define FUNC_EXECUTE   505
 
             unsigned char code[] = {{{shellcode_c}}};
 
-            // Estructura para almacenar información de conexión
-            struct connection_info {{
-                int sockfd;
-                struct sockaddr_in addr;
-                int is_connected;
-            }} conn_info = {{-1, {{0}}, 0}};
-
-            int open_socket() {{
-                int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                if (sockfd >= 0) {{
-                    write(1, "[+] Socket opened\\n", 18);
-                    conn_info.sockfd = sockfd;
-                }} else {{
-                    write(1, "[-] Failed to open socket\\n", 26);
-                }}
-                return sockfd;
-            }}
-
-            int connect_socket(const char *ip, int port) {{
-                if (conn_info.sockfd < 0) {{
-                    write(1, "[-] No socket available\\n", 24);
-                    return -1;
-                }}
-                
-                conn_info.addr.sin_family = AF_INET;
-                conn_info.addr.sin_port = htons(port);
-                conn_info.addr.sin_addr.s_addr = inet_addr(ip);
-                
-                if (connect(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) == 0) {{
-                    write(1, "[+] Connected\\n", 14);
-                    conn_info.is_connected = 1;
-                    return 0;
-                }} else {{
-                    write(1, "[-] Connection failed\\n", 22);
-                    return -1;
-                }}
-            }}
-
-            int listen_socket(int port) {{
-                if (conn_info.sockfd < 0) {{
-                    write(1, "[-] No socket available\\n", 24);
-                    return -1;
-                }}
-                
-                conn_info.addr.sin_family = AF_INET;
-                conn_info.addr.sin_port = htons(port);
-                conn_info.addr.sin_addr.s_addr = INADDR_ANY;
-                
-                if (bind(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) < 0) {{
-                    write(1, "[-] Bind failed\\n", 16);
-                    return -1;
-                }}
-                
-                if (listen(conn_info.sockfd, 5) < 0) {{
-                    write(1, "[-] Listen failed\\n", 18);
-                    return -1;
-                }}
-                
-                write(1, "[+] Listening\\n", 14);
-                return 0;
-            }}
-
-            int send_data(const char *data, size_t len) {{
-                if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
-                    write(1, "[-] Not connected\\n", 18);
-                    return -1;
-                }}
-                
-                ssize_t bytes_sent = send(conn_info.sockfd, data, len, 0);
-                if (bytes_sent > 0) {{
-                    write(1, "[+] Data sent\\n", 14);
-                }} else {{
-                    write(1, "[-] Send failed\\n", 16);
-                }}
-                return bytes_sent;
-            }}
-
-            int recv_data(char *buffer, size_t len) {{
-                if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
-                    write(1, "[-] Not connected\\n", 18);
-                    return -1;
-                }}
-                
-                ssize_t bytes_recv = recv(conn_info.sockfd, buffer, len, 0);
-                if (bytes_recv > 0) {{
-                    write(1, "[+] Data received\\n", 18);
-                }} else {{
-                    write(1, "[-] Receive failed\\n", 19);
-                }}
-                return bytes_recv;
-            }}
-
-            void execute_payload(const char *payload, size_t len) {{
-                void *mem = mmap(0, len, PROT_READ | PROT_WRITE | PROT_EXEC,
-                                MAP_ANON | MAP_PRIVATE, -1, 0);
-                if (mem == MAP_FAILED) {{
-                    write(1, "[-] Memory allocation failed\\n", 29);
-                    return;
-                }}
-                
-                memcpy(mem, payload, len);
-                write(1, "[+] Executing payload\\n", 22);
-                ((void(*)())mem)();
-                munmap(mem, len);
-            }}
-
-            void dispatch(int action) {{
-                switch (action) {{
-                    case FUNC_SOCKET:
-                        open_socket();
-                        break;
-                    case FUNC_CONNECT:
-                        write(1, "[*] Connecting to 127.0.0.1:4444\\n", 33);
-                        connect_socket("127.0.0.1", 4444);
-                        break;
-                    case FUNC_LISTEN:
-                        write(1, "[*] Listening on port 4444\\n", 27);
-                        listen_socket(4444);
-                        break;
-                    case FUNC_SEND:
-                        write(1, "[*] Sending data...\\n", 20);
-                        send_data("Hello from stub\\n", 16);
-                        break;
-                    case FUNC_RECV: {{
-                        write(1, "[*] Receiving data...\\n", 22);
-                        char buffer[1024];
-                        recv_data(buffer, sizeof(buffer));
-                        break;
-                    }}
-                    case FUNC_EXECUTE:
-                        write(1, "[*] Executing payload...\\n", 25);
-                        execute_payload((char *)code, sizeof(code));
-                        break;
-                    default:
-                        write(1, "[-] Unknown action.\\n", 21);
-                        break;
-                }}
-            }}
-
             int main() {{
+                // Desenfocar stdout/stderr para capturar mensajes del kernel
                 setbuf(stdout, NULL);
                 setbuf(stderr, NULL);
-                
+
                 void *exec = mmap(0, sizeof(code), PROT_READ | PROT_WRITE | PROT_EXEC,
-                                MAP_ANON | MAP_PRIVATE, -1, 0);
-                
+                                  MAP_ANON | MAP_PRIVATE, -1, 0);
                 if (exec == MAP_FAILED) {{
                     perror("mmap");
                     return 1;
                 }}
-                
                 memcpy(exec, code, sizeof(code));
-                
+
+                // Preparar registros: rsi = puntero a código, rdx = tamaño del código
+                register void *rsi asm("rsi") = exec;
+                register size_t rdx asm("rdx") = sizeof(code);
+
                 // Ejecutar el shellcode
                 ((void(*)())exec)();
-                
-                // El shellcode establece rdi = 500, verificar si necesitamos dispatch
-                register int action asm("rdi");
-                if (action >= 500) {{
-                    dispatch(action);
-                }}
-                
-                // Limpiar recursos
-                if (conn_info.sockfd >= 0) {{
-                    close(conn_info.sockfd);
-                }}
-                munmap(exec, sizeof(code));
-                
+
                 return 0;
             }}
             """
