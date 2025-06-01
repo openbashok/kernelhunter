@@ -32,6 +32,7 @@ from gene_bank_advanced_v2 import get_random_gene_dynamic
 from hyper_advanced_memory_corruptor import generate_hyper_advanced_corruptor_fragment
 from interrupt_storm import generate_interrupt_storm_fragment
 from inversion_mutation import invert_fragment
+from ipc_stress_attack import generate_ipc_stress_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -249,6 +250,7 @@ def generate_random_instruction():
         "gene_bank_dynamic",
         "hyper_corruptor",
         "interrupt_storm",
+        "ipc_stress",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -256,7 +258,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,72]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,71]
 
     choice_type = random.choices(options, weights=weights)[0]
 
