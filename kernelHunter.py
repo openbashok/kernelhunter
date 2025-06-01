@@ -19,6 +19,7 @@ from memory_pressure_mutation import generate_memory_pressure_fragment
 from advanced_crossover import crossover_shellcodes_advanced
 from cache_pollution_attack import generate_cache_pollution_fragment
 from control_flow_traps import generate_control_flow_trap_fragment
+from crispr_mutation import crispr_edit_shellcode
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -618,8 +619,9 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "add",      # Añadir instrucción
         "remove",   # Quitar instrucción
         "modify",   # Modificar instrucción existente
-        "duplicate" # Duplicar sección
-    ], weights=[40, 20, 20, 20])[0]
+        "duplicate", # Duplicar sección
+        "crispr"    # Edición dirigida de syscalls
+    ], weights=[40, 20, 20, 1, 19])[0]
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -648,7 +650,11 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         dup_section = core[dup_start:dup_start + dup_length]
         insert_pos = randint(0, len(core))
         new_core = core[:insert_pos] + dup_section + core[insert_pos:]
-
+    
+    elif mutation_type == "crispr" and core:
+        # Edición específica de syscalls mediante CRISPR
+        new_core = crispr_edit_shellcode(core)
+        
     else:
         # Si no se pudo aplicar la mutación seleccionada
         instr = generate_random_instruction()
