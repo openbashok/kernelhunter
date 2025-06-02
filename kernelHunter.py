@@ -39,6 +39,7 @@ from module_loading_storm import generate_module_loading_storm_fragment
 from network_stack_fuzz import generate_network_stack_fuzz_fragment
 from neutral_mutation import insert_neutral_mutation
 from nop_islands import generate_nop_island, reset_nop_counter
+from page_fault_flood import generate_page_fault_flood_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -263,6 +264,7 @@ def generate_random_instruction():
         "network_stack_fuzz",
         "neutral_mutation",
         "nop_island",
+        "page_fault_flood",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -270,7 +272,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,0,69]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,0,0,69]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -361,7 +363,8 @@ def generate_random_instruction():
         return insert_neutral_mutation(b"", min_insertions=1, max_insertions=3)
     elif choice_type == "nop_island":
         return generate_nop_island(min_nops=2, max_nops=8)  
-        
+    elif choice_type == "page_fault_flood":
+        return generate_page_fault_flood_fragment(min_faults=5, max_faults=20)        
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
