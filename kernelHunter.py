@@ -345,7 +345,7 @@ def generate_random_instruction():
     
     elif choice_type == "dma_confusion":
         return generate_dma_confusion_fragment(min_ops=4, max_ops=10)
-     elif choice_type == "syscall_storm":
+    elif choice_type == "syscall_storm":
         return generate_syscall_storm(min_calls=5, max_calls=20)   
     elif choice_type == "entropy_drain":
         return generate_entropy_drain_fragment(min_ops=5, max_ops=20)
