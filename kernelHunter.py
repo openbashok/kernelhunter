@@ -40,6 +40,7 @@ from network_stack_fuzz import generate_network_stack_fuzz_fragment
 from neutral_mutation import insert_neutral_mutation
 from nop_islands import generate_nop_island, reset_nop_counter
 from page_fault_flood import generate_page_fault_flood_fragment
+from pointer_attack_mutation import generate_pointer_attack_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -265,6 +266,7 @@ def generate_random_instruction():
         "neutral_mutation",
         "nop_island",
         "page_fault_flood",
+        "pointer_attack",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -272,7 +274,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,0,0,69]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,0,0,0,68]
 
     choice_type = random.choices(options, weights=weights)[0]
 
