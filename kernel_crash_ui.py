@@ -89,6 +89,7 @@ def show_options_menu(crash):
         print("[11] Generate complete diagnostic report")
         print("[12] Analyze with GPT")
         print("[13] View DNA Shellcode")
+        print("[14] Analyze DNA Shellcode")
         print("[q] Back\n")
 
         opt = input("Select an option: ").strip().lower()
@@ -225,7 +226,9 @@ def show_options_menu(crash):
                 print(f"Binary not found: {crash['binary_path']}")
                 input("Press ENTER to continue...")
         elif opt == '13':
-            view_dna_shellcode(crash)                
+            view_dna_shellcode(crash)
+        elif opt == '14':
+            analyze_dna_shellcode(crash)            
         elif opt == 'q':
             break
             
@@ -271,6 +274,39 @@ def view_dna_shellcode(crash):
     else:
         print("Shellcode not found in source file.")
     input("Press ENTER to continue...")
+
+def analyze_dna_shellcode(crash):
+    """Count occurrences of each byte in the shellcode and display stats."""
+    shellcode = extract_shellcode_from_c(crash['source_path'])
+    if not shellcode:
+        print("Shellcode not found in source file.")
+        input("Press ENTER to continue...")
+        return
+
+    try:
+        byte_values = [int(b, 16) for b in shellcode.split()]
+    except ValueError:
+        print("Failed to parse shellcode bytes.")
+        input("Press ENTER to continue...")
+        return
+
+    frequency = {}
+    for b in byte_values:
+        frequency[b] = frequency.get(b, 0) + 1
+
+    total = len(byte_values)
+    sorted_freq = sorted(frequency.items(), key=lambda x: x[1], reverse=True)
+
+    print("\nShellcode Byte Frequency (sorted by occurrence):\n")
+    for byte, count in sorted_freq:
+        pct = (count / total) * 100
+        print(f"0x{byte:02x}: {count} ({pct:.2f}%)")
+
+    print(f"\nTotal bytes: {total}")
+    print(f"Unique bytes: {len(frequency)}")
+    input("Press ENTER to continue...")
+
+
     
 def generate_diagnostic_report_silent(crash):
     """Generate a diagnostic report without displaying or opening it"""
