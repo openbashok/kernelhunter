@@ -103,7 +103,7 @@ with open("/usr/include/x86_64-linux-gnu/asm/unistd_64.h", "r") as f:
 #Inicializo el reservorio genetico
 # Initialize the genetic reservoir at the beginning of your main function or at module level
 from genetic_reservoir import GeneticReservoir
-genetic_reservoir = GeneticReservoir(max_size=200, diversity_threshold=0.6)
+genetic_reservoir = GeneticReservoir(max_size=200, diversity_threshold=0.3)
 
 # Optionally try to load a previous reservoir
 try:
