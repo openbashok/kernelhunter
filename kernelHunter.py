@@ -38,6 +38,7 @@ from memory_fragmentation_attack import generate_memory_fragmentation_fragment
 from module_loading_storm import generate_module_loading_storm_fragment
 from network_stack_fuzz import generate_network_stack_fuzz_fragment
 from neutral_mutation import insert_neutral_mutation
+from nop_islands import generate_nop_island, reset_nop_counter
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -261,6 +262,7 @@ def generate_random_instruction():
         "module_loading_storm",
         "network_stack_fuzz",
         "neutral_mutation",
+        "nop_island",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -268,7 +270,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,69]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,0,0,69]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -357,6 +359,8 @@ def generate_random_instruction():
         return generate_network_stack_fuzz_fragment(min_ops=5, max_ops=15)
     elif choice_type == "neutral_mutation":
         return insert_neutral_mutation(b"", min_insertions=1, max_insertions=3)
+    elif choice_type == "nop_island":
+        return generate_nop_island(min_nops=2, max_nops=8)  
         
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
