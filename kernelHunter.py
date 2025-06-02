@@ -51,6 +51,7 @@ from speculative_confusion import generate_speculative_confusion_fragment
 from syscall_reentrancy_storm import generate_syscall_reentrancy_storm_fragment
 from syscall_storm import generate_syscall_storm
 from syscall_table_stress import generate_syscall_table_stress_fragment
+from transposition_mutation_nop import transpose_fragment_nop_aware
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -741,8 +742,9 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "duplicate", # Duplicar sección
         "mass_duplicate", # Duplicación avanzada
         "invert",  # Invertir fragmentos
+        "transpose_nop",  # Mover fragmentos entre islas de NOP
         "crispr"    # Edición dirigida de syscalls
-    ], weights=[40, 20, 20, 1, 2, 15,2])[0]
+    ], weights=[40, 20, 20, 1, 2, 5,2,10])[0]
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -759,6 +761,10 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
     elif mutation_type == "invert" and len(core) >= 4:
         # Invertir un fragmento aleatorio del shellcode
         new_core = invert_fragment(core)
+        
+    elif mutation_type == "transpose_nop" and len(core) >= 6:
+        # Transponer fragmentos respetando islas de NOP
+        new_core = transpose_fragment_nop_aware(core)
         
     elif mutation_type == "modify" and core:
         # Modificar un byte existente
