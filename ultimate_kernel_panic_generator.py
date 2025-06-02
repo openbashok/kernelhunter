@@ -205,8 +205,14 @@ class UltimateKernelPanicGenerator:
     # Additional targeted exploits would be implemented similarly...
     
     # Additional targeted exploits would be implemented similarly...
+    
 
 # Usage example
+def generate_ultimate_panic_fragment(min_ops=20, max_ops=40):
+    """Wrapper function for compatibility."""
+    generator = UltimateKernelPanicGenerator()
+    return generator.generate_elite_exploit_fragment(min_ops, max_ops)
+    
 if __name__ == "__main__":
     generator = UltimateKernelPanicGenerator()
     
