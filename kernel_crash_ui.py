@@ -6,6 +6,7 @@ import subprocess
 import time
 import sys
 import importlib.util
+import re
 
 CSV_LOG_PATH = "kernel_errors.csv"
 GEN_DIR = "kernelhunter_generations"
@@ -87,6 +88,7 @@ def show_options_menu(crash):
         print("[10] Analyze ELF structure (readelf)")
         print("[11] Generate complete diagnostic report")
         print("[12] Analyze with GPT")
+        print("[13] View DNA Shellcode")
         print("[q] Back\n")
 
         opt = input("Select an option: ").strip().lower()
@@ -222,9 +224,54 @@ def show_options_menu(crash):
             else:
                 print(f"Binary not found: {crash['binary_path']}")
                 input("Press ENTER to continue...")
+        elif opt == '13':
+            view_dna_shellcode(crash)                
         elif opt == 'q':
             break
+            
+def extract_shellcode_from_c(path):
+    """Extract the contents of `unsigned char code[]` as a hex string."""
+    if not os.path.exists(path):
+        return None
 
+    try:
+        with open(path, "r") as f:
+            content = f.read()
+
+        # Capture the assignment to the specific variable `code` until the semicolon
+        match = re.search(r"unsigned\s+char\s+code\s*\[\s*\]\s*=\s*(.*?);", content, re.DOTALL)
+        if not match:
+            return None
+
+        assignment = match.group(1).strip()
+
+        if assignment.startswith("{"):
+            # Pattern: unsigned char code[] = { 0x90, 0x90 };
+            inside = assignment.partition("}")[0]
+            hex_bytes = re.findall(r"0x[0-9a-fA-F]{2}", inside)
+            if hex_bytes:
+                return " ".join(hex_bytes)
+        else:
+            # Pattern: unsigned char code[] = "\x90\x90" ...;
+            hex_bytes = re.findall(r"\\x([0-9a-fA-F]{2})", assignment)
+            if hex_bytes:
+                return " ".join(f"0x{b}" for b in hex_bytes)
+    except Exception:
+        return None
+
+    return None
+
+
+def view_dna_shellcode(crash):
+    """Display extracted shellcode from the crash's C source file."""
+    shellcode = extract_shellcode_from_c(crash['source_path'])
+    if shellcode:
+        print("\nDNA Shellcode:\n")
+        print(shellcode)
+    else:
+        print("Shellcode not found in source file.")
+    input("Press ENTER to continue...")
+    
 def generate_diagnostic_report_silent(crash):
     """Generate a diagnostic report without displaying or opening it"""
     timestamp = time.strftime("%Y%m%d-%H%M%S")
