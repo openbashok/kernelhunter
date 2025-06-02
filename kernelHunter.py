@@ -44,6 +44,7 @@ from pointer_attack_mutation import generate_pointer_attack_fragment
 from privileged_cpu_destruction import generate_privileged_cpu_destruction_fragment
 from privileged_storm import generate_privileged_storm_fragment
 from resource_starvation_attack import generate_resource_starvation_fragment
+from scheduler_attack import generate_scheduler_attack_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -273,6 +274,7 @@ def generate_random_instruction():
         "privileged_cpu_destruction",
         "privileged_storm",
         "resource_starvation",
+        "scheduler_attack",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -280,7 +282,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -378,6 +380,8 @@ def generate_random_instruction():
         return generate_page_fault_flood_fragment(min_faults=5, max_faults=20)   
     elif choice_type == "resource_starvation":
         return generate_resource_starvation_fragment(min_ops=5, max_ops=15)        
+    elif choice_type == "scheduler_attack":
+        return generate_scheduler_attack_fragment(min_ops=5, max_ops=15)        
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
