@@ -33,6 +33,7 @@ from hyper_advanced_memory_corruptor import generate_hyper_advanced_corruptor_fr
 from interrupt_storm import generate_interrupt_storm_fragment
 from inversion_mutation import invert_fragment
 from ipc_stress_attack import generate_ipc_stress_fragment
+from kpti_breaker import generate_kpti_breaker_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -251,6 +252,7 @@ def generate_random_instruction():
         "hyper_corruptor",
         "interrupt_storm",
         "ipc_stress",
+        "kpti_breaker",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -258,7 +260,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,71]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,70]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -337,7 +339,8 @@ def generate_random_instruction():
         return generate_interrupt_storm_fragment(min_interrupts=5, max_interrupts=15)        
     elif choice_type == "ipc_stress":
         return generate_ipc_stress_fragment(min_ops=5, max_ops=15)
-        
+    elif choice_type == "kpti_breaker":
+        return generate_kpti_breaker_fragment(min_ops=15, max_ops=30)        
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
