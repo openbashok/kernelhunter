@@ -350,7 +350,8 @@ def generate_random_instruction():
         return generate_hyper_advanced_corruptor_fragment(min_ops=15, max_ops=30)
     elif choice_type == "module_loading_storm":
         return generate_module_loading_storm_fragment(min_ops=5, max_ops=15)
-    
+    elif choice_type == "pointer_attack":
+        return generate_pointer_attack_fragment(min_ops=2, max_ops=6)    
     elif choice_type == "interrupt_storm":
         return generate_interrupt_storm_fragment(min_interrupts=5, max_interrupts=15)        
     elif choice_type == "ipc_stress":
