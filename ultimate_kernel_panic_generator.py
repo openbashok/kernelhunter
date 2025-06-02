@@ -195,11 +195,11 @@ class UltimateKernelPanicGenerator:
     
     def _generate_scheduler_exploit(self):
         """Targets the kernel scheduler specifically."""
-        return b"\x48\xc7\xc0\x9c\x00\x00\x00"  # mov rax, 156 (sched_getaffinity)
-               b"\x48\x31\xff"                  # xor rdi, rdi
-               b"\x48\x31\xf6"                  # xor rsi, rsi
-               b"\x48\x31\xd2"                  # xor rdx, rdx
-               b"\x0f\x05"                      # syscall
+        return (b"\x48\xc7\xc0\x9c\x00\x00\x00"  # mov rax, 156
+                b"\x48\x31\xff"                  # xor rdi, rdi
+                b"\x48\x31\xf6"                  # xor rsi, rsi  
+                b"\x48\x31\xd2"                  # xor rdx, rdx
+                b"\x0f\x05")                     # syscall
                # Add more scheduler-specific exploitation here
     
     # Additional targeted exploits would be implemented similarly...
