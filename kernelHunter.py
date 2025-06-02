@@ -45,6 +45,7 @@ from privileged_cpu_destruction import generate_privileged_cpu_destruction_fragm
 from privileged_storm import generate_privileged_storm_fragment
 from resource_starvation_attack import generate_resource_starvation_fragment
 from scheduler_attack import generate_scheduler_attack_fragment
+from shadow_memory_corruptor import generate_shadow_memory_corruptor_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -275,6 +276,7 @@ def generate_random_instruction():
         "privileged_storm",
         "resource_starvation",
         "scheduler_attack",
+        "shadow_corruptor",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -282,7 +284,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -347,7 +349,8 @@ def generate_random_instruction():
     
     elif choice_type == "filesystem_chaos":
         return generate_filesystem_chaos_fragment(min_ops=5, max_ops=20)
-    
+    elif choice_type == "shadow_corruptor":
+        return generate_shadow_memory_corruptor_fragment(min_ops=10, max_ops=25)    
     elif choice_type == "gene_bank":
         return get_random_gene()
     elif choice_type == "privileged_storm":
