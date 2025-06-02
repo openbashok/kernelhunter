@@ -66,7 +66,7 @@ def draw_table(stdscr, crashes, selected_idx, sort_key, reverse, offset, search_
         else:
             stdscr.addstr(i + 3, 2, line)
 
-    stdscr.addstr(height - 2, 2, "↑↓ navigate | Enter: options | q: quit | p: program | t: type | a: addr | m: message | /: search")
+    stdscr.addstr(height - 2, 2, "↑↓ navigate | Enter: options | q: quit | s: time | p: program | t: type | a: addr | m: message | /: search")
     stdscr.refresh()
 
 
@@ -754,8 +754,8 @@ def main(stdscr):
         elif key == ord('\n'):
             curses.endwin()
             show_options_menu(filtered_crashes[selected_idx])
-        elif key in [ord('p'), ord('t'), ord('a'), ord('m')]:
-            keys = {'p': 'program', 't': 'type', 'a': 'addr', 'm': 'msg'}
+        elif key in [ord('p'), ord('t'), ord('a'), ord('m'), ord('s')]:
+            keys = {'p': 'program', 't': 'type', 'a': 'addr', 'm': 'msg', 's': 'timestamp'}
             pressed_key = chr(key)
             if sort_key == keys[pressed_key]:
                 reverse = not reverse
