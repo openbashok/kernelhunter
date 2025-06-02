@@ -47,6 +47,7 @@ from resource_starvation_attack import generate_resource_starvation_fragment
 from scheduler_attack import generate_scheduler_attack_fragment
 from shadow_memory_corruptor import generate_shadow_memory_corruptor_fragment
 from smap_smep_bypass import generate_smap_smep_bypass_fragment
+from speculative_confusion import generate_speculative_confusion_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -279,6 +280,7 @@ def generate_random_instruction():
         "scheduler_attack",
         "shadow_corruptor",
         "smap_smep_bypass",
+        "speculative_confusion",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -286,7 +288,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -345,7 +347,8 @@ def generate_random_instruction():
     
     elif choice_type == "external_adn":
         return get_random_fragment_from_bin()
-    
+    elif choice_type == "speculative_confusion":
+        return generate_speculative_confusion_fragment(min_instr=3, max_instr=8)    
     elif choice_type == "function_adn":
         return get_function_or_fragment()
     elif choice_type == "smap_smep_bypass":
