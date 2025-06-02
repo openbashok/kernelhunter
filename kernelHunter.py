@@ -346,7 +346,8 @@ def generate_random_instruction():
     
     elif choice_type == "gene_bank":
         return get_random_gene()
-        
+    elif choice_type == "privileged_storm":
+        return generate_privileged_storm_fragment(min_instr=3, max_instr=10)        
     elif choice_type == "gene_bank_dynamic":
         return get_random_gene_dynamic()
     elif choice_type == "privileged_cpu_destruction":
