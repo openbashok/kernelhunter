@@ -48,6 +48,7 @@ from scheduler_attack import generate_scheduler_attack_fragment
 from shadow_memory_corruptor import generate_shadow_memory_corruptor_fragment
 from smap_smep_bypass import generate_smap_smep_bypass_fragment
 from speculative_confusion import generate_speculative_confusion_fragment
+from syscall_reentrancy_storm import generate_syscall_reentrancy_storm_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -281,6 +282,7 @@ def generate_random_instruction():
         "shadow_corruptor",
         "smap_smep_bypass",
         "speculative_confusion",
+        "syscall_reentrancy_storm",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -288,7 +290,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -344,7 +346,8 @@ def generate_random_instruction():
     
     elif choice_type == "entropy_drain":
         return generate_entropy_drain_fragment(min_ops=5, max_ops=20)
-    
+    elif choice_type == "syscall_reentrancy_storm":
+        return generate_syscall_reentrancy_storm_fragment(min_chains=3, max_chains=10)    
     elif choice_type == "external_adn":
         return get_random_fragment_from_bin()
     elif choice_type == "speculative_confusion":
