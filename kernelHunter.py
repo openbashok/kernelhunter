@@ -343,9 +343,7 @@ def generate_random_instruction():
         return generate_cache_pollution_fragment(min_ops=5, max_ops=15)
     
     elif choice_type == "control_flow_trap":
-        return generate_control_flow_trap_fragment(min_instr=2, max_instr=6)
-    elif choice_type == "ultimate_panic":
-        return generate_ultimate_panic_fragment(min_ops=20, max_ops=40)    
+        return generate_control_flow_trap_fragment(min_instr=2, max_instr=6)  
     elif choice_type == "deep_rop_chain":
         return generate_deep_rop_chain_fragment(min_gadgets=4, max_gadgets=10)
     elif choice_type == "syscall_table_stress":
@@ -403,7 +401,9 @@ def generate_random_instruction():
     elif choice_type == "resource_starvation":
         return generate_resource_starvation_fragment(min_ops=5, max_ops=15)        
     elif choice_type == "scheduler_attack":
-        return generate_scheduler_attack_fragment(min_ops=5, max_ops=15)        
+        return generate_scheduler_attack_fragment(min_ops=5, max_ops=15)
+    elif choice_type == "ultimate_panic":
+        return generate_ultimate_panic_fragment(min_ops=20, max_ops=40)
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
