@@ -52,6 +52,7 @@ from syscall_reentrancy_storm import generate_syscall_reentrancy_storm_fragment
 from syscall_storm import generate_syscall_storm
 from syscall_table_stress import generate_syscall_table_stress_fragment
 from transposition_mutation_nop import transpose_fragment_nop_aware
+from ultimate_kernel_panic_generator import generate_ultimate_panic_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -288,6 +289,7 @@ def generate_random_instruction():
         "syscall_reentrancy_storm",
         "syscall_storm",
         "syscall_table_stress",
+        "ultimate_panic",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -295,7 +297,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -342,7 +344,8 @@ def generate_random_instruction():
     
     elif choice_type == "control_flow_trap":
         return generate_control_flow_trap_fragment(min_instr=2, max_instr=6)
-    
+    elif choice_type == "ultimate_panic":
+        return generate_ultimate_panic_fragment(min_ops=20, max_ops=40)    
     elif choice_type == "deep_rop_chain":
         return generate_deep_rop_chain_fragment(min_gadgets=4, max_gadgets=10)
     elif choice_type == "syscall_table_stress":
