@@ -36,6 +36,7 @@ from ipc_stress_attack import generate_ipc_stress_fragment
 from kpti_breaker import generate_kpti_breaker_fragment
 from memory_fragmentation_attack import generate_memory_fragmentation_fragment
 from module_loading_storm import generate_module_loading_storm_fragment
+from network_stack_fuzz import generate_network_stack_fuzz_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -257,6 +258,7 @@ def generate_random_instruction():
         "kpti_breaker",
         "memory_fragmentation",
         "module_loading_storm",
+        "network_stack_fuzz",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -264,7 +266,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,69]
+    weights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,1,1,1,1,1,1,1,0,0,69]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -349,6 +351,9 @@ def generate_random_instruction():
         return generate_kpti_breaker_fragment(min_ops=15, max_ops=30)        
     elif choice_type == "memory_fragmentation":
         return generate_memory_fragmentation_fragment(min_ops=5, max_ops=15)
+    elif choice_type == "network_stack_fuzz":
+        return generate_network_stack_fuzz_fragment(min_ops=5, max_ops=15)
+        
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
