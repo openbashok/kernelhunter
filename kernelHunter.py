@@ -50,6 +50,7 @@ from smap_smep_bypass import generate_smap_smep_bypass_fragment
 from speculative_confusion import generate_speculative_confusion_fragment
 from syscall_reentrancy_storm import generate_syscall_reentrancy_storm_fragment
 from syscall_storm import generate_syscall_storm
+from syscall_table_stress import generate_syscall_table_stress_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -285,6 +286,7 @@ def generate_random_instruction():
         "speculative_confusion",
         "syscall_reentrancy_storm",
         "syscall_storm",
+        "syscall_table_stress",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -292,7 +294,7 @@ def generate_random_instruction():
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
+    weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
 
     choice_type = random.choices(options, weights=weights)[0]
 
@@ -342,7 +344,8 @@ def generate_random_instruction():
     
     elif choice_type == "deep_rop_chain":
         return generate_deep_rop_chain_fragment(min_gadgets=4, max_gadgets=10)
-    
+    elif choice_type == "syscall_table_stress":
+        return generate_syscall_table_stress_fragment(min_calls=5, max_calls=20)    
     elif choice_type == "dma_confusion":
         return generate_dma_confusion_fragment(min_ops=4, max_ops=10)
     elif choice_type == "syscall_storm":
