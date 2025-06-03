@@ -329,13 +329,15 @@ def analyze_dna_shellcode(crash):
 
 def add_parent_dna_to_reservoir(crash):
     """Load parent shellcode from crash JSON and add it to the reservoir."""
-    if not os.path.exists(crash['json_path']):
-        print("JSON file not found.")
+    json_path = crash['json_path']
+    print(f"Looking for JSON file at: {json_path}")
+    if not os.path.exists(json_path):
+        print(f"JSON file not found: {json_path}")
         input("Press ENTER to continue...")
         return
 
     try:
-        with open(crash['json_path'], 'r') as f:
+       with open(json_path, 'r') as f:
             data = json.load(f)
         parent_hex = data.get('parent_shellcode_hex')
         if not parent_hex:
