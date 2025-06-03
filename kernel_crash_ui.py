@@ -23,20 +23,34 @@ def load_crashes():
         reader = csv.DictReader(csvfile)
         for row in reader:
             prog = row['Program']
-            gen_prog = prog.split('_')
+            #gen_prog = prog.split('_')
 
-            if len(gen_prog) != 2:
+            #if len(gen_prog) != 2:
+            # Programs may appear with slight variations in naming.  Extract the
+            # numeric identifiers so we can construct the paths expected by the
+            # crash reporting code regardless of prefix style (e.g. "g0001_p0002"
+            # or "gen0001_prog0002").
+            match = re.search(r'(?:gen|g)?(\d+)[^\d]*(?:prog|p)?(\d+)', prog)
+            if not match:            
                 continue
 
-            gen = gen_prog[0]
-            prog_id = gen_prog[1]
-            gen_dir = f"gen_{gen[-4:]}"
-
-            source_path = os.path.join(GEN_DIR, gen_dir, f"{prog}.c")
-            json_path = os.path.join("kernelhunter_critical", f"crash_{gen}_{prog_id}.json")
+            #gen = gen_prog[0]
+            #prog_id = gen_prog[1]
+            #gen_dir = f"gen_{gen[-4:]}"
+            gen_num = int(match.group(1))
+            prog_num = int(match.group(2))
+            gen_dir = f"gen_{gen_num:04d}"
+            
+            #source_path = os.path.join(GEN_DIR, gen_dir, f"{prog}.c")
+            #json_path = os.path.join("kernelhunter_critical", f"crash_{gen}_{prog_id}.json")
+            std_name = f"gen{gen_num:04d}_prog{prog_num:04d}"
+            source_path = os.path.join(GEN_DIR, gen_dir, f"{std_name}.c")
+            json_filename = f"crash_gen{gen_num:04d}_prog{prog_num:04d}.json"
+            json_path = os.path.join("kernelhunter_critical", json_filename)
+            
             if not os.path.exists(json_path):
-                json_path = os.path.join("kernelhunter_crashes", f"crash_{gen}_{prog_id}.json")
-                
+                #json_path = os.path.join("kernelhunter_crashes", f"crash_{gen}_{prog_id}.json")
+                json_path = os.path.join("kernelhunter_crashes", json_filename)                
             crashes.append({
                 "timestamp": row['Timestamp'],
                 "program": prog,
