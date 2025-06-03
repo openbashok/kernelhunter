@@ -137,3 +137,21 @@ Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
 
 
 
+
+## Reservoir Browser
+
+The `reservoir_ui.py` tool lets you inspect the stored shellcodes in an interactive curses interface.
+Launch it directly to browse the reservoir:
+
+```bash
+$ python reservoir_ui.py
+```
+
+Within the table view you can:
+
+- Press `d` to delete the selected shellcode
+- Press `e` to edit it as hex bytes
+- Press `a` to get an exhaustive analysis report
+- Press `s` to toggle sorting between index and length
+
+Only the first 16 bytes of each shellcode are shown for a quick preview.
