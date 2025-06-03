@@ -123,6 +123,7 @@ def show_options_menu(crash):
         print("[13] View DNA Shellcode")
         print("[14] Analyze DNA Shellcode")
         print("[15] Add parent DNA shellcode to reservoir")
+        print("[16] Add crash DNA shellcode to reservoir")
         print("[q] Back\n")
 
         opt = input("Select an option: ").strip().lower()
@@ -263,7 +264,9 @@ def show_options_menu(crash):
         elif opt == '14':
             analyze_dna_shellcode(crash)
         elif opt == '15':
-            add_parent_dna_to_reservoir(crash)        
+            add_parent_dna_to_reservoir(crash)
+        elif opt == '16':
+            add_crash_dna_to_reservoir(crash)
         elif opt == 'q':
             break
             
@@ -384,6 +387,54 @@ def add_parent_dna_to_reservoir(crash):
         return
 
     # Show a quick preview of the shellcode bytes
+    preview = " ".join(f"{b:02x}" for b in shellcode_bytes[:8])
+    print(f"Shellcode preview: {preview}")
+
+    reservoir = GeneticReservoir()
+    reservoir.load_from_file('kernelhunter_reservoir.pkl')
+    if reservoir.add_simple(shellcode_bytes):
+        print("Shellcode added to genetic reservoir.")
+    else:
+        print("Shellcode rejected or already present.")
+    reservoir.save_to_file('kernelhunter_reservoir.pkl')
+    input("Press ENTER to continue...")
+
+
+def add_crash_dna_to_reservoir(crash):
+    """Add the shellcode that caused the crash to the reservoir."""
+    json_path = crash['json_path']
+    print(f"Looking for JSON file at: {json_path}")
+    if not os.path.exists(json_path):
+        print(f"JSON file not found: {json_path}")
+        input("Press ENTER to continue...")
+        return
+
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+
+        crash_hex = data.get('shellcode_hex')
+        if crash_hex:
+            shellcode_bytes = bytes.fromhex(crash_hex)
+            print("Using crash shellcode from JSON.")
+        else:
+            sc_string = extract_shellcode_from_c(crash['source_path'])
+            if not sc_string:
+                print("Shellcode not found in crash source.")
+                input("Press ENTER to continue...")
+                return
+            try:
+                shellcode_bytes = bytes(int(b, 16) for b in sc_string.split())
+                print("Crash shellcode extracted from source.")
+            except ValueError as e:
+                print(f"Error parsing extracted shellcode: {e}")
+                input("Press ENTER to continue...")
+                return
+    except Exception as e:
+        print(f"Failed to load shellcode: {e}")
+        input("Press ENTER to continue...")
+        return
+
     preview = " ".join(f"{b:02x}" for b in shellcode_bytes[:8])
     print(f"Shellcode preview: {preview}")
 
