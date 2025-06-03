@@ -66,6 +66,7 @@ def load_crashes():
             if not os.path.exists(binary_path):
                 binary_path = os.path.join(GEN_DIR, gen_dir, std_name)
 
+            size = calculate_shellcode_size(json_path, source_path)
             crashes.append({
                 "timestamp": row['Timestamp'],
                 "program": prog,
@@ -75,7 +76,8 @@ def load_crashes():
                 "original_line": row['Original Line'],
                 "source_path": source_path,
                 "json_path": json_path,
-                "binary_path": binary_path
+                "binary_path": binary_path,
+                "shellcode_size": size
             })
     return crashes
 
@@ -106,19 +108,26 @@ def draw_table(stdscr, crashes, selected_idx, sort_key, reverse, offset, search_
     title = f"KernelHunter - Crash Explorer [Sort: {sort_key} {'DESC' if reverse else 'ASC'} | Search: {search_term or 'N/A'}]"
     stdscr.addstr(0, (width - len(title)) // 2, title, curses.A_BOLD)
 
-    headers = ["Timestamp", "Program", "Error type", "Address", "Message"]
+    headers = ["Timestamp", "Program", "SC Size", "Error type", "Address", "Message"]
     header_str = " | ".join(h.ljust(15) for h in headers)
     stdscr.addstr(2, 2, header_str, curses.A_UNDERLINE)
 
     visible_crashes = crashes[offset:offset + height - 6]
     for i, crash in enumerate(visible_crashes):
-        line = f"{crash['timestamp']:<15} | {crash['program']:<15} | {crash['type']:<15} | {crash['addr']:<15} | {crash['msg'][:30]}"
+        line = (
+            f"{crash['timestamp']:<15} | "
+            f"{crash['program']:<15} | "
+            f"{crash['shellcode_size']:<15} | "
+            f"{crash['type']:<15} | "
+            f"{crash['addr']:<15} | "
+            f"{crash['msg'][:30]}"
+        )
         if i + offset == selected_idx:
             stdscr.addstr(i + 3, 2, line, curses.A_REVERSE)
         else:
             stdscr.addstr(i + 3, 2, line)
 
-    stdscr.addstr(height - 2, 2, "↑↓ navigate | Enter: options | q: quit | s: time | p: program | t: type | a: addr | m: message | /: search")
+    stdscr.addstr(height - 2, 2, "↑↓ navigate | Enter: options | q: quit | s: time | p: program | t: type | a: addr | m: message | z: size | /: search")
     stdscr.refresh()
 
 
@@ -321,6 +330,28 @@ def extract_shellcode_from_c(path):
         return None
 
     return None
+
+
+def calculate_shellcode_size(json_path, source_path):
+    """Return shellcode size in bytes based on JSON or source."""
+    size = 0
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+            hex_str = data.get('shellcode_hex') or data.get('parent_shellcode_hex')
+            if hex_str:
+                size = len(bytes.fromhex(hex_str))
+        except Exception:
+            pass
+    if not size and os.path.exists(source_path):
+        sc = extract_shellcode_from_c(source_path)
+        if sc:
+            try:
+                size = len([int(b, 16) for b in sc.split()])
+            except Exception:
+                size = 0
+    return size
 
 
 def view_dna_shellcode(crash):
@@ -998,8 +1029,8 @@ def main(stdscr):
         elif key == ord('\n'):
             curses.endwin()
             show_options_menu(filtered_crashes[selected_idx])
-        elif key in [ord('p'), ord('t'), ord('a'), ord('m'), ord('s')]:
-            keys = {'p': 'program', 't': 'type', 'a': 'addr', 'm': 'msg', 's': 'timestamp'}
+        elif key in [ord('p'), ord('t'), ord('a'), ord('m'), ord('s'), ord('z')]:
+            keys = {'p': 'program', 't': 'type', 'a': 'addr', 'm': 'msg', 's': 'timestamp', 'z': 'shellcode_size'}
             pressed_key = chr(key)
             if sort_key == keys[pressed_key]:
                 reverse = not reverse
