@@ -353,23 +353,42 @@ def add_parent_dna_to_reservoir(crash):
     try:
         with open(json_path, 'r') as f:
             data = json.load(f)
+
         parent_hex = data.get('parent_shellcode_hex')
-        if not parent_hex:
-            print("Parent shellcode not recorded for this crash.")
-            input("Press ENTER to continue...")
-            return
-        parent_shellcode = bytes.fromhex(parent_hex)
+        if parent_hex:
+            shellcode_bytes = bytes.fromhex(parent_hex)
+            print("Using parent shellcode from crash JSON.")
+        else:
+            # Fall back to the actual shellcode for this crash
+            crash_hex = data.get('shellcode_hex')
+            if crash_hex:
+                shellcode_bytes = bytes.fromhex(crash_hex)
+                print("Parent shellcode not recorded. Using crash shellcode.")
+            else:
+                # As a last resort, extract from the C source file
+                sc_string = extract_shellcode_from_c(crash['source_path'])
+                if not sc_string:
+                    print("Shellcode not found in crash source.")
+                    input("Press ENTER to continue...")
+                    return
+                try:
+                    shellcode_bytes = bytes(int(b, 16) for b in sc_string.split())
+                    print("Parent shellcode not recorded. Using extracted shellcode from source.")
+                except ValueError as e:
+                    print(f"Error parsing extracted shellcode: {e}")
+                    input("Press ENTER to continue...")
+                    return
     except Exception as e:
-        print(f"Failed to load parent shellcode: {e}")
+        print(f"Failed to load shellcode: {e}")
         input("Press ENTER to continue...")
         return
 
     reservoir = GeneticReservoir()
     reservoir.load_from_file('kernelhunter_reservoir.pkl')
-    if reservoir.add(parent_shellcode):
-        print("Parent shellcode added to genetic reservoir.")
+    if reservoir.add(shellcode_bytes):
+        print("Shellcode added to genetic reservoir.")
     else:
-        print("Parent shellcode rejected or already present.")
+        print("Shellcode rejected or already present.")
     reservoir.save_to_file('kernelhunter_reservoir.pkl')
     input("Press ENTER to continue...")
 
