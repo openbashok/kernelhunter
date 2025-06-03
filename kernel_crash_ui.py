@@ -43,14 +43,29 @@ def load_crashes():
             
             #source_path = os.path.join(GEN_DIR, gen_dir, f"{prog}.c")
             #json_path = os.path.join("kernelhunter_critical", f"crash_{gen}_{prog_id}.json")
+
             std_name = f"gen{gen_num:04d}_prog{prog_num:04d}"
-            source_path = os.path.join(GEN_DIR, gen_dir, f"{std_name}.c")
+            gname = f"g{gen_num:04d}_p{prog_num:04d}"
+
+            # Source code for crashes is stored under kernelhunter_crashes using
+            # the gen####_prog#### scheme. If not found, fall back to the
+            # generation directory with the g####_p#### name.
+            source_path = os.path.join("kernelhunter_crashes", f"{std_name}.c")
+            if not os.path.exists(source_path):
+                source_path = os.path.join(GEN_DIR, gen_dir, f"{gname}.c")
+
             json_filename = f"crash_gen{gen_num:04d}_prog{prog_num:04d}.json"
             json_path = os.path.join("kernelhunter_critical", json_filename)
-            
+
             if not os.path.exists(json_path):
-                #json_path = os.path.join("kernelhunter_crashes", f"crash_{gen}_{prog_id}.json")
-                json_path = os.path.join("kernelhunter_crashes", json_filename)                
+                json_path = os.path.join("kernelhunter_crashes", json_filename)
+
+            # Binary path follows the g####_p#### naming convention in the
+            # generation directory. Use gen####_prog#### as fallback.
+            binary_path = os.path.join(GEN_DIR, gen_dir, gname)
+            if not os.path.exists(binary_path):
+                binary_path = os.path.join(GEN_DIR, gen_dir, std_name)
+
             crashes.append({
                 "timestamp": row['Timestamp'],
                 "program": prog,
@@ -60,9 +75,8 @@ def load_crashes():
                 "original_line": row['Original Line'],
                 "source_path": source_path,
                 "json_path": json_path,
-                "binary_path": source_path.replace('.c', '')
+                "binary_path": binary_path
             })
-
     return crashes
 
 
