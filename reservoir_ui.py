@@ -53,14 +53,26 @@ class ReservoirUI:
     def list_shellcodes(self, stdscr):
         idx = 0
         offset = 0
+        sort_key = "index"  # index, length or preview
+        reverse = False
         while True:
             stdscr.clear()
             stdscr.addstr(0, 2, "Shellcodes (q to return)", curses.A_BOLD)
+            stdscr.addstr(1, 2, f"Sort: {sort_key}{' desc' if reverse else ' asc'}  [s] cycle  [r] reverse")
+
+            sorted_list = list(enumerate(self.reservoir.reservoir))
+            if sort_key == "length":
+                sorted_list.sort(key=lambda x: len(x[1]), reverse=reverse)
+            elif sort_key == "preview":
+                sorted_list.sort(key=lambda x: x[1][:16].hex(), reverse=reverse)
+            else:
+                sorted_list.sort(key=lambda x: x[0], reverse=reverse)
+
             height, width = stdscr.getmaxyx()
-            visible = self.reservoir.reservoir[offset:offset + height - 4]
-            for i, sc in enumerate(visible):
-                preview = " ".join(f"{b:02x}" for b in sc[:8])
-                line = f"{offset + i:04d}: len {len(sc):3d} | {preview}"
+            visible = sorted_list[offset:offset + height - 5]
+            for i, (orig_idx, sc) in enumerate(visible):
+                preview = " ".join(f"{b:02x}" for b in sc[:16])
+                line = f"{orig_idx:04d} | len {len(sc):3d} | {preview}"
                 attr = curses.A_REVERSE if offset + i == idx else curses.A_NORMAL
                 stdscr.addstr(i + 2, 2, line[:width - 4], attr)
             stdscr.refresh()
@@ -71,10 +83,72 @@ class ReservoirUI:
                 idx -= 1
                 if idx < offset:
                     offset -= 1
-            elif key == curses.KEY_DOWN and idx < len(self.reservoir) - 1:
+            elif key == curses.KEY_DOWN and idx < len(sorted_list) - 1:
                 idx += 1
-                if idx >= offset + (height - 4):
+                if idx >= offset + (height - 5):
                     offset += 1
+            elif key == ord('s'):
+                sort_key = {'index': 'length', 'length': 'preview', 'preview': 'index'}[sort_key]
+                idx, offset = 0, 0
+            elif key == ord('r'):
+                reverse = not reverse
+            elif key == ord('d') and sorted_list:
+                self.delete_shellcode(stdscr, sorted_list[idx][0])
+                if idx >= len(self.reservoir):
+                    idx = max(0, len(self.reservoir) - 1)
+                if offset > idx:
+                    offset = idx
+            elif key == ord('e') and sorted_list:
+                self.edit_shellcode(stdscr, sorted_list[idx][0])
+            elif key == ord('a') and sorted_list:
+                self.analyze_shellcode(stdscr, sorted_list[idx][0])
+
+    def delete_shellcode(self, stdscr, orig_idx):
+        stdscr.clear()
+        stdscr.addstr(0, 2, f"Delete shellcode {orig_idx}? (y/n)")
+        stdscr.refresh()
+        key = stdscr.getch()
+        if key in (ord('y'), ord('Y')):
+            try:
+                self.reservoir.reservoir.pop(orig_idx)
+                self.reservoir.clear_cache()
+                self.save()
+                self.show_message(stdscr, "Shellcode deleted")
+            except Exception as e:
+                self.show_message(stdscr, f"Error: {e}")
+        else:
+            self.show_message(stdscr, "Cancelled")
+
+    def edit_shellcode(self, stdscr, orig_idx):
+        from crispr_mutation import crispr_edit_shellcode
+
+        shellcode = self.reservoir.reservoir[orig_idx]
+        edited = crispr_edit_shellcode(shellcode)
+        self.reservoir.reservoir[orig_idx] = edited
+        self.reservoir.clear_cache()
+        self.reservoir.extract_features(edited)
+        self.save()
+        self.show_message(stdscr, "Shellcode edited")
+
+    def analyze_shellcode(self, stdscr, orig_idx):
+        shellcode = self.reservoir.reservoir[orig_idx]
+        features = self.reservoir.extract_features(shellcode)
+        stdscr.clear()
+        stdscr.addstr(0, 2, f"Shellcode {orig_idx} analysis", curses.A_BOLD)
+        stdscr.addstr(2, 2, f"Length: {features.get('length', 0)}")
+        stdscr.addstr(3, 2, f"Syscalls: {features.get('syscalls', 0)}")
+        stdscr.addstr(4, 2, f"Privileged instr: {features.get('privileged_instr', 0)}")
+        stdscr.addstr(6, 2, "Instruction types:")
+        types = features.get('instruction_types', {})
+        line = 7
+        for name, count in types.items():
+            stdscr.addstr(line, 4, f"{name}: {count}")
+            line += 1
+        preview = ' '.join(f"{b:02x}" for b in shellcode[:32])
+        stdscr.addstr(line + 1, 2, preview)
+        stdscr.addstr(line + 3, 2, "Press any key to return")
+        stdscr.refresh()
+        stdscr.getch()
 
     def export_reservoir(self, stdscr):
         curses.echo()
