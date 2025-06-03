@@ -747,7 +747,7 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "invert",  # Invertir fragmentos
         "transpose_nop",  # Mover fragmentos entre islas de NOP
         "crispr"    # Edición dirigida de syscalls
-    ], weights=[40, 20, 20, 1, 2, 5,2,10])[0]
+    ], weights=[22, 12, 18, 18, 10, 8, 8, 4])[0]
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
