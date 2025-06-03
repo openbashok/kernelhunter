@@ -251,6 +251,33 @@ class GeneticReservoir:
             self.crash_types.add(crash_info.get("crash_type", "unknown"))
         print(f"Added shellcode to reservoir (size now: {len(self.reservoir)})")
         return True
+
+    def remove(self, index):
+        """Remove shellcode at the given index."""
+        if 0 <= index < len(self.reservoir):
+            sc = self.reservoir.pop(index)
+            sc_id = self._get_shellcode_id(sc)
+            self.features_cache.pop(sc_id, None)
+            return True
+        return False
+
+    def update(self, index, new_shellcode):
+        """Replace shellcode at index with new bytes."""
+        if 0 <= index < len(self.reservoir):
+            old_sc = self.reservoir[index]
+            old_id = self._get_shellcode_id(old_sc)
+            self.features_cache.pop(old_id, None)
+            self.reservoir[index] = new_shellcode
+            self.extract_features(new_shellcode)
+            return True
+        return False
+
+    def get_features(self, index):
+        """Return extracted features for the shellcode at index."""
+        if 0 <= index < len(self.reservoir):
+            sc = self.reservoir[index]
+            return self.extract_features(sc)
+        return {}
     
     def get_sample(self, n=1):
         """
