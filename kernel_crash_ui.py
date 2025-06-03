@@ -7,6 +7,8 @@ import time
 import sys
 import importlib.util
 import re
+import json
+from genetic_reservoir import GeneticReservoir
 
 CSV_LOG_PATH = "kernel_errors.csv"
 GEN_DIR = "kernelhunter_generations"
@@ -90,6 +92,7 @@ def show_options_menu(crash):
         print("[12] Analyze with GPT")
         print("[13] View DNA Shellcode")
         print("[14] Analyze DNA Shellcode")
+        print("[15] Add parent DNA shellcode to reservoir")
         print("[q] Back\n")
 
         opt = input("Select an option: ").strip().lower()
@@ -228,7 +231,9 @@ def show_options_menu(crash):
         elif opt == '13':
             view_dna_shellcode(crash)
         elif opt == '14':
-            analyze_dna_shellcode(crash)            
+            analyze_dna_shellcode(crash)
+        elif opt == '15':
+            add_parent_dna_to_reservoir(crash)        
         elif opt == 'q':
             break
             
