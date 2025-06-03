@@ -80,6 +80,25 @@ def load_crashes():
     return crashes
 
 
+def open_file_in_viewer(file_path):
+    """Attempt to open a file using the system's default viewer.
+
+    Falls back to 'less' if graphical utilities are unavailable.
+    """
+    try:
+        if os.name == 'nt':
+            os.startfile(file_path)
+        elif os.name == 'posix':
+            if os.system('which xdg-open > /dev/null') == 0:
+                subprocess.call(['xdg-open', file_path])
+            elif os.system('which open > /dev/null') == 0:
+                subprocess.call(['open', file_path])
+            else:
+                subprocess.call(['less', file_path])
+    except Exception as e:
+        print(f"Couldn't automatically open the file: {e}")
+
+
 def draw_table(stdscr, crashes, selected_idx, sort_key, reverse, offset, search_term):
     stdscr.clear()
     height, width = stdscr.getmaxyx()
@@ -246,12 +265,13 @@ def show_options_menu(crash):
                         
                         # Call the analyze function
                         analysis_path = ia_module.analyze_with_gpt(report_path)
-                        
+
                         if analysis_path:
                             print(f"AI analysis complete. Results saved to {analysis_path}")
+                            open_file_in_viewer(analysis_path)
                         else:
                             print("AI analysis failed.")
-                        
+
                         input("Press ENTER to continue...")
                     except Exception as e:
                         print(f"Error during AI analysis: {e}")
