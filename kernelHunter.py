@@ -298,7 +298,57 @@ def generate_random_instruction():
     #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
     #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
     #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
-    weights = [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4]
+    weights = [
+        2,  # random_bytes
+        1,  # syscall_setup
+        1,  # syscall
+        6,  # memory_access
+        5,  # privileged
+        1,  # arithmetic
+        6,  # control_flow
+        5,  # x86_opcode
+        1,  # simd
+        1,  # known_vulns
+        1,  # segment_registers
+        1,  # speculative_exec
+        1,  # forced_exception
+        1,  # control_registers
+        1,  # stack_manipulation
+        1,  # full_kernel_syscall
+        1,  # memory_pressure
+        1,  # cache_pollution
+        1,  # control_flow_trap
+        1,  # deep_rop_chain
+        1,  # dma_confusion
+        1,  # entropy_drain
+        1,  # external_adn
+        1,  # function_adn
+        1,  # filesystem_chaos
+        1,  # gene_bank
+        1,  # gene_bank_dynamic
+        1,  # hyper_corruptor
+        1,  # interrupt_storm
+        1,  # ipc_stress
+        1,  # kpti_breaker
+        1,  # memory_fragmentation
+        1,  # module_loading_storm
+        1,  # network_stack_fuzz
+        1,  # neutral_mutation
+        1,  # nop_island
+        1,  # page_fault_flood
+        1,  # pointer_attack
+        3,  # privileged_cpu_destruction
+        3,  # privileged_storm
+        1,  # resource_starvation
+        1,  # scheduler_attack
+        1,  # shadow_corruptor
+        1,  # smap_smep_bypass
+        1,  # speculative_confusion
+        1,  # syscall_reentrancy_storm
+        1,  # syscall_storm
+        1,  # syscall_table_stress
+        2   # ultimate_panic
+    ]
     choice_type = random.choices(options, weights=weights)[0]
 
     if choice_type == "random_bytes":
