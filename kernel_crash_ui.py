@@ -337,7 +337,7 @@ def add_parent_dna_to_reservoir(crash):
         return
 
     try:
-       with open(json_path, 'r') as f:
+        with open(json_path, 'r') as f:
             data = json.load(f)
         parent_hex = data.get('parent_shellcode_hex')
         if not parent_hex:
