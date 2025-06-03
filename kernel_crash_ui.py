@@ -34,7 +34,9 @@ def load_crashes():
 
             source_path = os.path.join(GEN_DIR, gen_dir, f"{prog}.c")
             json_path = os.path.join("kernelhunter_critical", f"crash_{gen}_{prog_id}.json")
-
+            if not os.path.exists(json_path):
+                json_path = os.path.join("kernelhunter_crashes", f"crash_{gen}_{prog_id}.json")
+                
             crashes.append({
                 "timestamp": row['Timestamp'],
                 "program": prog,
