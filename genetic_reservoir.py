@@ -234,6 +234,23 @@ class GeneticReservoir:
                 return True
         
         return False
+
+    def add_simple(self, shellcode, crash_info=None):
+        """Adds shellcode without diversity checks, only avoiding duplicates."""
+        for existing in self.reservoir:
+            if shellcode == existing:
+                print("Shellcode rejected: Duplicate")
+                return False
+
+        if len(self.reservoir) >= self.max_size:
+            self.reservoir.pop(0)
+
+        self.reservoir.append(shellcode)
+        self.extract_features(shellcode)
+        if crash_info:
+            self.crash_types.add(crash_info.get("crash_type", "unknown"))
+        print(f"Added shellcode to reservoir (size now: {len(self.reservoir)})")
+        return True
     
     def get_sample(self, n=1):
         """

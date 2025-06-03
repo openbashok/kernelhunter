@@ -383,9 +383,13 @@ def add_parent_dna_to_reservoir(crash):
         input("Press ENTER to continue...")
         return
 
+    # Show a quick preview of the shellcode bytes
+    preview = " ".join(f"{b:02x}" for b in shellcode_bytes[:8])
+    print(f"Shellcode preview: {preview}")
+
     reservoir = GeneticReservoir()
     reservoir.load_from_file('kernelhunter_reservoir.pkl')
-    if reservoir.add(shellcode_bytes):
+    if reservoir.add_simple(shellcode_bytes):
         print("Shellcode added to genetic reservoir.")
     else:
         print("Shellcode rejected or already present.")
