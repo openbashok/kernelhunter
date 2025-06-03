@@ -829,7 +829,8 @@ def is_system_level_crash(return_code, stderr):
 
     return False
 
-def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, return_code, is_system_impact):
+#def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, return_code, is_system_impact):
+def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, return_code, is_system_impact, parent_shellcode=None):    
     """Guarda información detallada del crash para análisis posterior"""
     # Determinar directorio según impacto
     save_dir = "kernelhunter_critical" if is_system_impact else "kernelhunter_crashes"
@@ -845,7 +846,8 @@ def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, retu
         "stderr": stderr,
         "stdout": stdout,
         "system_impact": is_system_impact,
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "parent_shellcode_hex": parent_shellcode.hex() if parent_shellcode else None
     }
 
     with open(f"{save_dir}/crash_gen{gen_id:04d}_prog{prog_id:04d}.json", "w") as f:
@@ -1155,7 +1157,7 @@ def run_generation(gen_id, base_population):
 
                     # Guardar información detallada del crash
                     save_crash_info(gen_id, i, shellcode, crash_type, stderr_text,
-                                   stdout_text, result.returncode, is_system_impact)
+                                   stdout_text, result.returncode, is_system_impact, parent)
 
                     crashes += 1
 
