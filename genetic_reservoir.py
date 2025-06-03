@@ -251,6 +251,95 @@ class GeneticReservoir:
             self.crash_types.add(crash_info.get("crash_type", "unknown"))
         print(f"Added shellcode to reservoir (size now: {len(self.reservoir)})")
         return True
+
+    def remove(self, index):
+        """Remove shellcode at the given index."""
+        if 0 <= index < len(self.reservoir):
+            sc = self.reservoir.pop(index)
+            sc_id = self._get_shellcode_id(sc)
+            self.features_cache.pop(sc_id, None)
+            return True
+        return False
+
+    def update(self, index, new_shellcode):
+        """Replace shellcode at index with new bytes."""
+        if 0 <= index < len(self.reservoir):
+            old_sc = self.reservoir[index]
+            old_id = self._get_shellcode_id(old_sc)
+            self.features_cache.pop(old_id, None)
+            self.reservoir[index] = new_shellcode
+            self.extract_features(new_shellcode)
+            return True
+        return False
+
+    def get_features(self, index):
+        """Return extracted features for the shellcode at index."""
+        if 0 <= index < len(self.reservoir):
+            sc = self.reservoir[index]
+            return self.extract_features(sc)
+        return {}
+
+    def get_analysis_text(self, index):
+        """Return a detailed textual analysis of a shellcode."""
+        if 0 <= index < len(self.reservoir):
+            sc = self.reservoir[index]
+            return self._generate_analysis_text(sc)
+        return "Invalid shellcode index"
+
+    def _identify_known_sequences(self, shellcode):
+        """Identify known instruction sequences within the shellcode."""
+        patterns = {
+            b"\x0f\x05": "syscall",
+            b"\xcd\x80": "int 0x80",
+            b"\x0f\x34": "sysenter",
+            b"\x0f\x35": "sysexit",
+            b"\x0f\x07": "sysret",
+            b"\xf4": "hlt",
+            b"\xcc": "int3",
+            b"\x0f\x22": "mov cr*",
+            b"\x0f\x20": "mov from cr*",
+            b"\x0f\x01\xd0": "xgetbv",
+            b"\x0f\x01\xf8": "swapgs",
+        }
+
+        found = {}
+        for pat, name in patterns.items():
+            count = shellcode.count(pat)
+            if count:
+                found[name] = count
+        return found
+
+    def _generate_analysis_text(self, shellcode):
+        """Create a multi-line textual summary of the shellcode."""
+        features = self.extract_features(shellcode)
+        counts = Counter(shellcode)
+
+        ascii_printable = sum(v for b, v in counts.items() if 32 <= b < 127)
+        total = len(shellcode) or 1
+
+        lines = []
+        lines.append(f"Length: {features['length']} bytes")
+        lines.append(f"Syscalls: {features['syscalls']}")
+        lines.append(f"Privileged instructions: {features['privileged_instr']}")
+
+        lines.append("\nInstruction type counts:")
+        for name, cnt in sorted(features['instruction_types'].items(), key=lambda x: -x[1]):
+            if cnt:
+                lines.append(f"  {name:17} {cnt}")
+
+        lines.append(f"\nPrintable ASCII bytes: {ascii_printable} ({ascii_printable/total*100:.1f}%)")
+        lines.append("\nByte distribution:")
+        for i in range(0, 256, 16):
+            row = ' '.join(f"{counts.get(j,0):3d}" for j in range(i, i+16))
+            lines.append(f"  {i:02x}-{i+15:02x}: {row}")
+
+        known = self._identify_known_sequences(shellcode)
+        if known:
+            lines.append("\nKnown instruction patterns:")
+            for name, cnt in known.items():
+                lines.append(f"  {name}: {cnt}")
+
+        return "\n".join(lines)
     
     def get_sample(self, n=1):
         """

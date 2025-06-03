@@ -53,16 +53,27 @@ class ReservoirUI:
     def list_shellcodes(self, stdscr):
         idx = 0
         offset = 0
+        sort_key = "index"
+        ascending = True
         while True:
             stdscr.clear()
             stdscr.addstr(0, 2, "Shellcodes (q to return)", curses.A_BOLD)
+            stdscr.addstr(1, 2, "Arrows: move  d:delete  e:edit  a:analyze  s:sort", curses.A_DIM)
             height, width = stdscr.getmaxyx()
-            visible = self.reservoir.reservoir[offset:offset + height - 4]
-            for i, sc in enumerate(visible):
-                preview = " ".join(f"{b:02x}" for b in sc[:8])
-                line = f"{offset + i:04d}: len {len(sc):3d} | {preview}"
+
+            enumerated = list(enumerate(self.reservoir.reservoir))
+            if sort_key == "length":
+                enumerated.sort(key=lambda x: len(x[1]), reverse=not ascending)
+            elif sort_key == "index" and not ascending:
+                enumerated.reverse()
+
+            visible = enumerated[offset:offset + height - 5]
+            for i, (real_idx, sc) in enumerate(visible):
+                preview = " ".join(f"{b:02x}" for b in sc[:16])
+                line = f"{real_idx:04d} | {len(sc):4d} | {preview}"
                 attr = curses.A_REVERSE if offset + i == idx else curses.A_NORMAL
                 stdscr.addstr(i + 2, 2, line[:width - 4], attr)
+
             stdscr.refresh()
             key = stdscr.getch()
             if key in (ord('q'), 27):
@@ -71,10 +82,71 @@ class ReservoirUI:
                 idx -= 1
                 if idx < offset:
                     offset -= 1
-            elif key == curses.KEY_DOWN and idx < len(self.reservoir) - 1:
+            elif key == curses.KEY_DOWN and idx < len(enumerated) - 1:
                 idx += 1
-                if idx >= offset + (height - 4):
+                if idx >= offset + (height - 5):
                     offset += 1
+            elif key == ord('d'):
+                if self.reservoir.remove(enumerated[idx][0]):
+                    if idx >= len(enumerated) - 1 and idx > 0:
+                        idx -= 1
+                    self.save()
+            elif key == ord('e'):
+                self.edit_shellcode(stdscr, enumerated[idx][0])
+            elif key == ord('a'):
+                self.analyze_shellcode(stdscr, enumerated[idx][0])
+            elif key == ord('s'):
+                if sort_key == "index":
+                    sort_key = "length"
+                elif sort_key == "length" and ascending:
+                    ascending = False
+                else:
+                    sort_key = "index"
+                    ascending = True
+
+    def edit_shellcode(self, stdscr, index):
+        """Prompt the user to edit a shellcode in hex."""
+        curses.echo()
+        stdscr.clear()
+        stdscr.addstr(0, 2, f"Edit shellcode {index} (hex bytes):")
+        stdscr.refresh()
+        new_hex = stdscr.getstr().decode().strip()
+        curses.noecho()
+        try:
+            new_bytes = bytes.fromhex(new_hex)
+        except ValueError:
+            self.show_message(stdscr, "Invalid hex input")
+            return
+
+        if self.reservoir.update(index, new_bytes):
+            self.save()
+            self.show_message(stdscr, "Shellcode updated")
+        else:
+            self.show_message(stdscr, "Update failed")
+
+    def analyze_shellcode(self, stdscr, index):
+        """Display a detailed textual analysis for a shellcode."""
+        text = self.reservoir.get_analysis_text(index)
+        lines = text.splitlines()
+        height, width = stdscr.getmaxyx()
+        offset = 0
+
+        while True:
+            stdscr.clear()
+            stdscr.addstr(0, 2, f"Shellcode {index} analysis", curses.A_BOLD)
+            visible = lines[offset:offset + height - 3]
+            for i, line in enumerate(visible):
+                stdscr.addstr(i + 2, 2, line[:width - 4])
+            stdscr.addstr(height - 1, 2, "Up/Down to scroll, q to return", curses.A_DIM)
+            stdscr.refresh()
+
+            key = stdscr.getch()
+            if key in (ord('q'), 27):
+                break
+            elif key == curses.KEY_UP and offset > 0:
+                offset -= 1
+            elif key == curses.KEY_DOWN and offset < len(lines) - (height - 3):
+                offset += 1
 
     def export_reservoir(self, stdscr):
         curses.echo()
