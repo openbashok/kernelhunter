@@ -140,14 +140,71 @@ class ReservoirUI:
         else:
             self.show_message(stdscr, "Update failed")
 
+    def _generate_analysis_report(self, shellcode):
+        """Return a list of textual lines summarising the shellcode."""
+        from collections import Counter
+        import math
+        from kernelhunter import interpret_instruction
+
+        features = self.reservoir.extract_features(shellcode)
+
+        lines = []
+        lines.append(f"Length: {features.get('length', len(shellcode))} bytes")
+        lines.append(f"Syscalls: {features.get('syscalls', 0)}")
+        lines.append(f"Privileged instructions: {features.get('privileged_instr', 0)}")
+
+        instr_types = features.get('instruction_types', {})
+        if instr_types:
+            lines.append("Instruction type counts:")
+            for t_name, count in instr_types.items():
+                lines.append(f"  {t_name}: {count}")
+
+        # Byte distribution metrics
+        counter = Counter(shellcode)
+        total = len(shellcode)
+        entropy = 0.0
+        for c in counter.values():
+            p = c / total
+            entropy -= p * math.log2(p)
+
+        lines.append(f"Unique bytes: {len(counter)}")
+        lines.append(f"Shannon entropy: {entropy:.2f} bits/byte")
+
+        lines.append("Top 5 bytes:")
+        for b, cnt in counter.most_common(5):
+            lines.append(f"  0x{b:02x}: {cnt}")
+
+        lines.append("Byte occurrences:")
+        for b in sorted(counter):
+            lines.append(f"  0x{b:02x}: {counter[b]}")
+
+        # Detect known instruction patterns
+        found = set()
+        for i in range(len(shellcode)):
+            desc = interpret_instruction(shellcode[i:i+8])
+            if desc != "instrucción desconocida":
+                found.add(desc)
+        lines.append("Known instructions detected:")
+        if found:
+            for d in sorted(found):
+                lines.append(f"  - {d}")
+        else:
+            lines.append("  None")
+
+        return lines
+
     def analyze_shellcode(self, stdscr, index):
-        """Display feature analysis for a shellcode."""
-        features = self.reservoir.get_features(index)
+        """Display a detailed textual analysis for a shellcode."""
+        shellcode = self.reservoir.reservoir[index]
+        report = self._generate_analysis_report(shellcode)
         stdscr.clear()
         stdscr.addstr(0, 2, f"Shellcode {index} analysis", curses.A_BOLD)
         y = 2
-        for key, val in features.items():
-            stdscr.addstr(y, 2, f"{key}: {val}")
+        height, width = stdscr.getmaxyx()
+        for line in report:
+            if y >= height - 2:
+                break
+            stdscr.addstr(y, 2, line[:width - 4])
             y += 1
         stdscr.addstr(y + 1, 2, "Press any key to return")
         stdscr.refresh()
