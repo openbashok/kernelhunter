@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-# genetic_reservoir.py - VERSIÓN RÁPIDA Y PRÁCTICA
-# Enfoque: VELOCIDAD + EFECTIVIDAD sobre complejidad académica
+# genetic_reservoir.py - Module for genetic reservoir management in KernelHunter
+#
+# Maintains a diverse population of shellcodes to ensure genetic variety
+# and prevent premature convergence or stagnation in evolution.
 
 import random
 import numpy as np
@@ -8,26 +10,24 @@ from collections import Counter
 
 class GeneticReservoir:
     """
-    Implementa un reservorio genético RÁPIDO que mantiene diversidad real.
-    Enfoque práctico: mejor diversidad con menos cálculo.
+    Implements a genetic reservoir to maintain diversity in the population.
+    Stores shellcodes with interesting or diverse characteristics for
+    reintroduction when necessary.
     """
     
-    def __init__(self, max_size=100, diversity_threshold=0.5):  # THRESHOLD MÁS BAJO por defecto
+    def __init__(self, max_size=100, diversity_threshold=0.7):
         """
         Initializes the genetic reservoir.
-        NOTA: Threshold más bajo (0.5 vs 0.7) para mayor variabilidad
+        
+        Args:
+            max_size: Maximum size of the reservoir
+            diversity_threshold: Minimum diversity threshold to include new individuals
         """
         self.reservoir = []
         self.max_size = max_size
         self.diversity_threshold = diversity_threshold
-        self.crash_types = set()
-        self.features_cache = {}
-        
-        # === MÉTRICAS RÁPIDAS ===
-        self._diversity_calculations = 0
-        self._additions_count = 0
-        
-        print(f"🚀 GeneticReservoir Fast: threshold={diversity_threshold:.2f}, max_size={max_size}")
+        self.crash_types = set()  # Registry of observed crash types
+        self.features_cache = {}  # Cache of extracted features
         
     def __len__(self):
         """Returns the number of shellcodes in the reservoir."""
@@ -35,233 +35,282 @@ class GeneticReservoir:
         
     def calculate_diversity(self, shellcode1, shellcode2):
         """
-        Cálculo de diversidad SÚPER RÁPIDO.
-        Enfoque: 3 métricas simples pero efectivas.
-        """
-        self._diversity_calculations += 1
+        Calculates the diversity between two shellcodes (0-1).
         
-        # Auto-optimización MUY simple cada 1000 cálculos
-        if self._diversity_calculations % 1000 == 0:
-            self._simple_auto_optimize()
-        
-        return self._calculate_diversity_fast(shellcode1, shellcode2)
-    
-    def _calculate_diversity_fast(self, shellcode1, shellcode2):
-        """
-        Diversidad RÁPIDA: 3 métricas simples y efectivas
+        Args:
+            shellcode1: First shellcode (bytes)
+            shellcode2: Second shellcode (bytes)
+            
+        Returns:
+            float: Value between 0 (identical) and 1 (completely different)
         """
         if len(shellcode1) == 0 or len(shellcode2) == 0:
             return 1.0
-        
-        # 1. DIFERENCIA DE TAMAÑO (súper rápido)
-        len1, len2 = len(shellcode1), len(shellcode2)
-        max_len = max(len1, len2)
-        size_diversity = abs(len1 - len2) / max_len if max_len > 0 else 0.0
-        
-        # 2. DIVERSIDAD DE BYTES ÚNICOS (rápido)
-        unique1 = set(shellcode1)
-        unique2 = set(shellcode2)
-        
-        if len(unique1) == 0 and len(unique2) == 0:
-            unique_diversity = 0.0
-        else:
-            intersection = len(unique1 & unique2)
-            union = len(unique1 | unique2)
-            unique_diversity = 1.0 - (intersection / union) if union > 0 else 1.0
-        
-        # 3. DIVERSIDAD DE PREFIJO/SUFIJO (súper rápido)
-        sample_size = min(50, len1, len2)  # Solo primeros/últimos 50 bytes
-        
-        if sample_size > 0:
-            # Comparar inicio
-            prefix_diff = sum(1 for a, b in zip(shellcode1[:sample_size], shellcode2[:sample_size]) if a != b)
-            # Comparar final
-            suffix_diff = sum(1 for a, b in zip(shellcode1[-sample_size:], shellcode2[-sample_size:]) if a != b)
             
-            positional_diversity = (prefix_diff + suffix_diff) / (2 * sample_size)
-        else:
-            positional_diversity = 1.0
+        # Use identifiers for shellcodes
+        id1 = self._get_shellcode_id(shellcode1)
+        id2 = self._get_shellcode_id(shellcode2)
         
-        # COMBINACIÓN SIMPLE Y EFECTIVA
-        # Pesos optimizados para velocidad vs efectividad
-        diversity = 0.3 * size_diversity + 0.4 * unique_diversity + 0.3 * positional_diversity
+        # If we've already calculated features, use them
+        if id1 in self.features_cache and id2 in self.features_cache:
+            feat1 = self.features_cache[id1]
+            feat2 = self.features_cache[id2]
+            
+            # Calculate diversity based on features
+            instruction_div = self._calculate_instruction_diversity(
+                feat1["instruction_types"], 
+                feat2["instruction_types"]
+            )
+            
+            # Normalized length difference
+            length_diff = abs(feat1["length"] - feat2["length"]) / max(feat1["length"], feat2["length"])
+            
+            # Syscall difference
+            syscall_diff = abs(feat1["syscalls"] - feat2["syscalls"]) / (max(feat1["syscalls"], feat2["syscalls"]) + 1)
+            
+            # Weights for factors
+            return 0.4 * instruction_div + 0.3 * length_diff + 0.3 * syscall_diff
         
-        return min(1.0, max(0.0, diversity))
+        # Fallback method - normalized edit distance
+        edit_distance = sum(a != b for a, b in zip(shellcode1[:min(len(shellcode1), len(shellcode2))], 
+                                                 shellcode2[:min(len(shellcode1), len(shellcode2))]))
+        length_diff = abs(len(shellcode1) - len(shellcode2))
+        
+        # Normalize to the longer shellcode
+        max_len = max(len(shellcode1), len(shellcode2))
+        normalized_distance = (edit_distance + length_diff) / max_len if max_len > 0 else 1.0
+        
+        return normalized_distance
     
-    def _simple_auto_optimize(self):
-        """Auto-optimización SÚPER simple y rápida"""
-        if len(self.reservoir) < 5:
-            return
+    def _calculate_instruction_diversity(self, types1, types2):
+        """
+        Calculates the diversity between two sets of instruction types with pesos
+        ponderados según su relevancia para encontrar vulnerabilidades.
         
-        # Si el reservorio está muy lleno, subir threshold un poco
-        utilization = len(self.reservoir) / self.max_size
+        Args:
+            types1: Dictionary with instruction type counts for the first shellcode
+            types2: Dictionary with instruction type counts for the second shellcode
+            
+        Returns:
+            float: Value between 0 (identical) and 1 (completely different)
+        """
+        # Get all unique keys
+        all_keys = set(types1.keys()) | set(types2.keys())
         
-        if utilization > 0.95:  # Reservorio casi lleno
-            self.diversity_threshold = min(0.8, self.diversity_threshold + 0.05)
-            print(f"🔧 Auto-optimized threshold UP to {self.diversity_threshold:.2f} (reservoir full)")
-        elif utilization < 0.3 and self._additions_count > 50:  # Reservorio muy vacío después de muchos intentos
-            self.diversity_threshold = max(0.2, self.diversity_threshold - 0.1)
-            print(f"🔧 Auto-optimized threshold DOWN to {self.diversity_threshold:.2f} (low acceptance)")
+        # Pesos para diferentes categorías según su relevancia para seguridad
+        weights = {
+            "known_vulns": 2.5,         # Mayor peso a vulnerabilidades conocidas
+            "privileged": 2.0,          # Alto peso a instrucciones privilegiadas
+            "control_registers": 2.0,   # Alto peso a manipulación de registros de control
+            "speculative_exec": 2.0,    # Alto peso a ejecución especulativa (Spectre/Meltdown)
+            "syscall": 1.5,             # Peso medio-alto a syscalls
+            "memory_access": 1.5,       # Peso medio-alto a accesos a memoria
+            "segment_registers": 1.5,   # Peso medio-alto a registros de segmento
+            "forced_exception": 1.5,    # Peso medio-alto a excepciones forzadas
+            "control_flow": 1.2,        # Peso medio a control de flujo
+            "stack_manipulation": 1.2,  # Peso medio a manipulación de pila
+            "arithmetic": 1.0,          # Peso estándar
+            "simd": 1.0,                # Peso estándar
+            "x86_opcode": 1.0,          # Peso estándar
+            "other": 0.5                # Peso bajo a instrucciones no clasificadas
+        }
+        
+        # Calcular diferencia total ponderada
+        weighted_diff = 0
+        weighted_total = 0
+        
+        for key in all_keys:
+            val1 = types1.get(key, 0)
+            val2 = types2.get(key, 0)
+            key_weight = weights.get(key, 1.0)
+            
+            weighted_diff += abs(val1 - val2) * key_weight
+            weighted_total += max(val1, val2) * key_weight
+        
+        # Normalizar
+        return weighted_diff / weighted_total if weighted_total > 0 else 1.0
     
     def _get_shellcode_id(self, shellcode):
-        """ID SÚPER rápido"""
-        # Solo usar hash + longitud (mucho más rápido que hex)
-        return f"{hash(shellcode)}_{len(shellcode)}"
+        """Generates a unique identifier for a shellcode."""
+        # Use the first and last bytes as an identifier
+        prefix = shellcode[:min(10, len(shellcode))].hex()
+        suffix = shellcode[-min(10, len(shellcode)):].hex()
+        length = len(shellcode)
+        return f"{prefix}_{length}_{suffix}"
     
     def extract_features(self, shellcode):
         """
-        Extracción de características RÁPIDA
-        Solo lo esencial para diversidad
+        Extracts relevant features from the shellcode for analysis.
+        
+        Args:
+            shellcode: Shellcode to analyze (bytes)
+            
+        Returns:
+            dict: Dictionary with extracted features
         """
+        # Check if we've already calculated these features
         shellcode_id = self._get_shellcode_id(shellcode)
         if shellcode_id in self.features_cache:
             return self.features_cache[shellcode_id]
         
-        # Características SÚPER simples pero efectivas
+        # Extract features
         features = {
             "length": len(shellcode),
-            "unique_bytes": len(set(shellcode)),
-            "syscalls": shellcode.count(b"\x0f\x05") + shellcode.count(b"\xcd\x80"),
-            "nulls": shellcode.count(0),
-            "high_bytes": sum(1 for b in shellcode if b > 127),
-            # Hash del primer y último cuarto (para detectar estructuras similares)
-            "structure_hash": hash(shellcode[:len(shellcode)//4] + shellcode[-len(shellcode)//4:])
+            "syscalls": self._count_syscalls(shellcode),
+            "privileged_instr": self._count_privileged_instructions(shellcode),
+            "instruction_types": self._analyze_instruction_types(shellcode),
         }
         
+        # Save to cache
         self.features_cache[shellcode_id] = features
         return features
     
     def is_diverse_enough(self, shellcode):
         """
-        Verificación de diversidad RÁPIDA
+        Checks if a shellcode is diverse enough to be included.
+        
+        Args:
+            shellcode: Shellcode to evaluate (bytes)
+            
+        Returns:
+            bool: True if the shellcode is diverse, False otherwise
         """
         if not self.reservoir:
             return True
+            
+        # Extract features
+        self.extract_features(shellcode)
         
-        # OPTIMIZACIÓN: Solo comparar con una MUESTRA del reservorio
-        # Para reservorios grandes, no necesitamos comparar con TODOS
-        sample_size = min(20, len(self.reservoir))  # Máximo 20 comparaciones
-        sample_reservoir = random.sample(self.reservoir, sample_size)
-        
-        # Calcular diversidad solo contra la muestra
+        # Calculate diversity against all existing shellcodes
         diversities = [self.calculate_diversity(shellcode, existing) 
-                      for existing in sample_reservoir]
+                      for existing in self.reservoir]
         
+        # If the shellcode is sufficiently different from all existing ones
         return min(diversities) > self.diversity_threshold
     
     def add(self, shellcode, crash_info=None):
         """
-        Adición RÁPIDA con lógica inteligente
-        """
-        self._additions_count += 1
+        Adds a shellcode to the reservoir if it's diverse or interesting.
         
-        # Check duplicates RÁPIDO (por hash)
-        shellcode_hash = hash(shellcode)
+        Args:
+            shellcode: Shellcode to add (bytes)
+            crash_info: Information about the crash, if any (dict)
+            
+        Returns:
+            bool: True if the shellcode was added, False otherwise
+        """
+        # Check if the shellcode already exists in the reservoir
         for existing in self.reservoir:
-            if hash(existing) == shellcode_hash and existing == shellcode:
+            if shellcode == existing:
                 print(f"Shellcode rejected: Duplicate")
                 return False
         
-        # LÓGICA SIMPLE Y EFECTIVA
+        # Always accept if the reservoir is not full
         if len(self.reservoir) < self.max_size:
-            # Si hay espacio, solo verificar diversidad básica
             if self.is_diverse_enough(shellcode):
                 self.reservoir.append(shellcode)
                 print(f"Added shellcode to reservoir (size now: {len(self.reservoir)})")
                 if crash_info:
                     self.crash_types.add(crash_info.get("crash_type", "unknown"))
-                
-                # Guardado automático SIMPLE
-                if len(self.reservoir) % 25 == 0:  # Cada 25
-                    self._quick_save()
-                
                 return True
             else:
                 print(f"Shellcode rejected: Not diverse enough")
-                return False
         else:
-            # REEMPLAZO INTELIGENTE Y RÁPIDO
+            # If the reservoir is full, replace the least diverse
             if self.is_diverse_enough(shellcode):
-                # En lugar de calcular diversidad de todos, usar estrategia simple:
-                # Reemplazar el más viejo o uno al azar de los primeros
-                if random.random() < 0.7:  # 70% del tiempo reemplazar uno viejo
-                    replace_idx = random.randint(0, min(10, len(self.reservoir)-1))  # Primeros 10
-                else:  # 30% del tiempo reemplazar uno al azar
-                    replace_idx = random.randint(0, len(self.reservoir)-1)
+                # Find the shellcode most similar to others (least diverse)
+                diversity_scores = []
+                for i, sc in enumerate(self.reservoir):
+                    avg_diversity = sum(self.calculate_diversity(sc, other) 
+                                       for j, other in enumerate(self.reservoir) if i != j) / (len(self.reservoir) - 1)
+                    diversity_scores.append((i, avg_diversity))
                 
-                old_len = len(self.reservoir[replace_idx])
-                self.reservoir[replace_idx] = shellcode
-                print(f"Replaced shellcode at index {replace_idx} (old: {old_len}B, new: {len(shellcode)}B)")
+                # Replace the least diverse
+                least_diverse_idx = min(diversity_scores, key=lambda x: x[1])[0]
+                self.reservoir[least_diverse_idx] = shellcode
                 
                 if crash_info:
                     self.crash_types.add(crash_info.get("crash_type", "unknown"))
-                
-                if len(self.reservoir) % 25 == 0:
-                    self._quick_save()
-                
                 return True
-            else:
-                print(f"Shellcode rejected: Not diverse enough")
-                return False
-    
-    def _quick_save(self):
-        """Guardado SÚPER rápido"""
-        try:
-            import pickle
-            data = {
-                "reservoir": self.reservoir,
-                "crash_types": self.crash_types,
-                "max_size": self.max_size,
-                "diversity_threshold": self.diversity_threshold
-            }
-            with open("kernelhunter_reservoir.pkl", "wb") as f:
-                pickle.dump(data, f)
-        except Exception:
-            pass  # Fallar silenciosamente
+        
+        return False
     
     def get_sample(self, n=1):
-        """Muestra RÁPIDA"""
+        """
+        Gets a random sample from the reservoir.
+        
+        Args:
+            n: Number of shellcodes to get
+            
+        Returns:
+            list: List of selected shellcodes
+        """
         if not self.reservoir:
             return []
+        
         return random.sample(self.reservoir, min(n, len(self.reservoir)))
     
     def get_diverse_sample(self, n=1):
         """
-        Muestra diversa RÁPIDA
-        Estrategia: selección inteligente sin cálculos pesados
+        Gets a diverse sample from the reservoir.
+        
+        Args:
+            n: Number of shellcodes to get
+            
+        Returns:
+            list: List of diverse shellcodes
         """
         if len(self.reservoir) <= n:
             return self.reservoir.copy()
+            
+        # Selection based on maximum diversity
+        selected = [random.choice(self.reservoir)]
         
-        # ESTRATEGIA RÁPIDA: dividir reservorio en grupos y tomar uno de cada grupo
-        if n <= 10:  # Para n pequeño, usar estrategia de grupos
-            group_size = len(self.reservoir) // n
-            selected = []
+        while len(selected) < n:
+            # Calculate maximum diversity for each candidate
+            max_diversities = []
             
-            for i in range(n):
-                start_idx = i * group_size
-                end_idx = start_idx + group_size if i < n-1 else len(self.reservoir)
+            for candidate in self.reservoir:
+                if candidate in selected:
+                    continue
+                    
+                # Minimum diversity with respect to those already selected
+                min_div = min(self.calculate_diversity(candidate, s) for s in selected)
+                max_diversities.append((candidate, min_div))
+            
+            # Select the candidate with the highest minimum diversity
+            if max_diversities:
+                next_selection = max(max_diversities, key=lambda x: x[1])[0]
+                selected.append(next_selection)
+            else:
+                break
                 
-                if start_idx < len(self.reservoir):
-                    # Tomar uno al azar del grupo
-                    group_idx = random.randint(start_idx, min(end_idx-1, len(self.reservoir)-1))
-                    selected.append(self.reservoir[group_idx])
-            
-            return selected
-        else:
-            # Para n grande, usar muestreo aleatorio simple
-            return random.sample(self.reservoir, n)
+        return selected
     
     def get_by_feature(self, feature_name, value, comparison="gt", limit=5):
-        """Búsqueda por características RÁPIDA"""
+        """
+        Gets shellcodes that match a feature criterion.
+        
+        Args:
+            feature_name: Name of the feature (syscalls, length, etc.)
+            value: Value to compare against
+            comparison: Type of comparison (gt: greater than, lt: less than, eq: equal)
+            limit: Maximum number of results
+            
+        Returns:
+            list: List of shellcodes meeting the criterion
+        """
         results = []
         
         for shellcode in self.reservoir:
-            if len(results) >= limit:
-                break
+            # Extract features if not in cache
+            shellcode_id = self._get_shellcode_id(shellcode)
+            if shellcode_id not in self.features_cache:
+                self.extract_features(shellcode)
                 
-            features = self.extract_features(shellcode)
+            features = self.features_cache[shellcode_id]
             
+            # Compare according to criterion
             if feature_name in features:
                 feature_value = features[feature_name]
                 
@@ -271,29 +320,42 @@ class GeneticReservoir:
                     results.append(shellcode)
                 elif comparison == "eq" and feature_value == value:
                     results.append(shellcode)
-        
+                    
+                # Limit results
+                if len(results) >= limit:
+                    break
+                    
         return results
     
     def save_to_file(self, filename):
-        """Guardado con estadísticas básicas"""
+        """
+        Saves the genetic reservoir to a file.
+        
+        Args:
+            filename: Filename to save to
+        """
         import pickle
         
         data = {
             "reservoir": self.reservoir,
             "crash_types": self.crash_types,
             "max_size": self.max_size,
-            "diversity_threshold": self.diversity_threshold,
-            "stats": {
-                "diversity_calculations": self._diversity_calculations,
-                "additions_count": self._additions_count
-            }
+            "diversity_threshold": self.diversity_threshold
         }
         
         with open(filename, "wb") as f:
             pickle.dump(data, f)
     
     def load_from_file(self, filename):
-        """Carga RÁPIDA"""
+        """
+        Loads the genetic reservoir from a file.
+        
+        Args:
+            filename: Filename to load from
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
         import pickle
         
         try:
@@ -305,92 +367,235 @@ class GeneticReservoir:
             self.max_size = data["max_size"]
             self.diversity_threshold = data["diversity_threshold"]
             
-            # Cargar estadísticas si existen
-            if "stats" in data:
-                stats = data["stats"]
-                self._diversity_calculations = stats.get("diversity_calculations", 0)
-                self._additions_count = stats.get("additions_count", 0)
-            
-            # NO recalcular caché - lo haremos sobre la marcha
+            # Recalculate feature cache
             self.features_cache = {}
-            
+            for shellcode in self.reservoir:
+                self.extract_features(shellcode)
+                
             return True
             
         except (FileNotFoundError, KeyError, pickle.PickleError):
             return False
     
+    def _count_syscalls(self, shellcode):
+        """
+        Counts the system calls in the shellcode.
+        
+        Args:
+            shellcode: Shellcode to analyze
+            
+        Returns:
+            int: Number of system calls
+        """
+        # Look for syscall patterns
+        syscall_pattern = b"\x0f\x05"  # syscall instruction
+        int80_pattern = b"\xcd\x80"    # int 0x80 (32-bit syscall)
+        
+        count = shellcode.count(syscall_pattern)
+        count += shellcode.count(int80_pattern)
+        
+        # Also count syscall setup sequences that may indicate syscalls
+        syscall_setup = b"\x48\xc7\xc0"  # mov rax, X (syscall number)
+        setup_count = shellcode.count(syscall_setup)
+        
+        # We don't count all setup patterns as actual syscalls
+        # Only count if there are more setups than actual syscalls
+        if setup_count > count:
+            # Add some of the excess setups as potential syscalls
+            count += (setup_count - count) // 2
+            
+        return count
+    
+    def _count_privileged_instructions(self, shellcode):
+        """
+        Counts privileged instructions in the shellcode.
+        
+        Args:
+            shellcode: Shellcode to analyze
+            
+        Returns:
+            int: Number of privileged instructions
+        """
+        privileged_patterns = [
+            b"\x0f\x01",  # Various system instructions
+            b"\xf4",      # HLT
+            b"\x0f\x00",  # Segment control
+            b"\x0f\x06",  # CLTS
+            b"\x0f\x09",  # WBINVD
+            b"\x0f\x30",  # WRMSR
+            b"\x0f\x32",  # RDMSR
+            b"\x0f\x34",  # SYSENTER
+            b"\x0f\x35",  # SYSEXIT
+            b"\x0f\x07",  # SYSRET
+            b"\x0f\x22",  # MOV CR*, reg
+            b"\x0f\x20",  # MOV reg, CR*
+            b"\x0f\x01\xd0",  # XGETBV
+            b"\x0f\x01\xf8",  # SWAPGS
+        ]
+        
+        count = 0
+        for pattern in privileged_patterns:
+            count += shellcode.count(pattern)
+            
+        return count
+    
+    def _analyze_instruction_types(self, shellcode):
+        """
+        Analyzes the types of instructions in the shellcode with greater detail.
+        
+        Args:
+            shellcode: Shellcode to analyze
+            
+        Returns:
+            dict: Dictionary with instruction type counts
+        """
+        # Classify instructions by type with expanded categories
+        types = {
+            "syscall": 0,
+            "memory_access": 0,
+            "privileged": 0,
+            "control_flow": 0,
+            "arithmetic": 0,
+            "simd": 0,
+            "segment_registers": 0,
+            "speculative_exec": 0,
+            "forced_exception": 0,
+            "control_registers": 0,
+            "stack_manipulation": 0,
+            "known_vulns": 0,
+            "x86_opcode": 0,
+            "other": 0
+        }
+        
+        # Expanded patterns with all those identified in the generator
+        patterns = {
+            "syscall": [b"\x0f\x05", b"\xcd\x80"],
+            "memory_access": [
+                b"\x48\x8b", b"\x48\x89", b"\xff", b"\x0f\xae", 
+                b"\x48\x8a", b"\x48\x88", b"\x48\xa4", b"\x48\xa5",
+                b"\x48\xaa", b"\x48\xab"
+            ],
+            "privileged": [
+                b"\x0f\x01", b"\xcd\x80", b"\xf4", b"\x0f\x00", 
+                b"\x0f\x06", b"\x0f\x09", b"\x0f\x30", b"\x0f\x32", 
+                b"\x0f\x34", b"\x0f\x35", b"\x0f\x07", b"\x0f\x05", 
+                b"\x0f\x0b"
+            ],
+            "control_flow": [
+                b"\xe9", b"\xeb", b"\x74", b"\x75", b"\x0f\x84", 
+                b"\x0f\x85", b"\xe8", b"\xff", b"\xc3", b"\xc2"
+            ],
+            "arithmetic": [
+                b"\x48\x01", b"\x48\x29", b"\x48\xf7", b"\x48\x0f\xaf", 
+                b"\x48\x0f\xc7", b"\x48\x99", b"\x48\xd1"
+            ],
+            "simd": [
+                b"\x0f\x10", b"\x0f\x11", b"\x0f\x28", b"\x0f\x29", 
+                b"\x0f\x58", b"\x0f\x59", b"\x0f\x6f", b"\x0f\x7f", 
+                b"\x0f\xae", b"\x0f\xc2"
+            ],
+            "segment_registers": [
+                b"\x8e\xd8", b"\x8e\xc0", b"\x8e\xe0", b"\x8e\xe8",
+                b"\x8c\xd8", b"\x8c\xc0", b"\x8c\xe0", b"\x8c\xe8"
+            ],
+            "speculative_exec": [
+                b"\x0f\xae\x38", b"\x0f\xae\xf8", b"\x0f\xae\xe8", 
+                b"\x0f\xae\xf0", b"\x0f\x31", b"\x0f\xc7\xf8"
+            ],
+            "forced_exception": [
+                b"\x0f\x0b", b"\xcc", b"\xcd\x03", b"\xcd\x04", 
+                b"\xf4", b"\xce"
+            ],
+            "control_registers": [
+                b"\x0f\x22\xd8", b"\x0f\x20\xd8", b"\x0f\x22\xe0", 
+                b"\x0f\x20\xe0", b"\x0f\x22\xd0", b"\x0f\x20\xd0"
+            ],
+            "stack_manipulation": [
+                b"\x48\x89\xe4", b"\x48\x83\xc4", b"\x48\x83\xec", 
+                b"\x48\x8d\x64\x24", b"\x9c", b"\x9d"
+            ],
+            "known_vulns": [
+                b"\x0f\xae\x05", b"\x65\x48\x8b\x04\x25", b"\x0f\x3f", 
+                b"\xf3\x0f\xae\xf0", b"\x48\xcf", b"\x0f\x22\xc0", 
+                b"\x0f\x32", b"\x0f\x30", b"\x0f\x01\xd0", b"\x0f\x01\xf8", 
+                b"\x0f\xae\x38", b"\x0f\x18"
+            ]
+        }
+        
+        # Detect sequences in a smarter way - avoiding double counting
+        i = 0
+        while i < len(shellcode):
+            matched = False
+            
+            # Try to match longer patterns first
+            for category, pattern_list in sorted(patterns.items(), 
+                                                key=lambda x: max([len(p) for p in x[1]], default=0),
+                                                reverse=True):
+                for pattern in pattern_list:
+                    if i <= len(shellcode) - len(pattern) and shellcode[i:i+len(pattern)] == pattern:
+                        types[category] += 1
+                        i += len(pattern)  # Move index past this pattern
+                        matched = True
+                        break
+                if matched:
+                    break
+            
+            # If no pattern matched, check if it's a REX prefix (likely x86_64 instruction)
+            if not matched:
+                if i < len(shellcode) and 0x40 <= shellcode[i] <= 0x4F:
+                    types["x86_opcode"] += 1
+                    i += 1  # Move past REX prefix
+                    
+                    # Try to estimate the length of the instruction
+                    # Most x86-64 instructions are 2-4 bytes after the REX prefix
+                    instr_len = min(3, len(shellcode) - i)
+                    i += instr_len
+                else:
+                    # Count as other and move forward
+                    types["other"] += 1
+                    i += 1
+        
+        return types
+    
     def get_diversity_stats(self):
-        """Estadísticas RÁPIDAS"""
+        """
+        Gets diversity statistics for the reservoir.
+        
+        Returns:
+            dict: Diversity statistics
+        """
         if len(self.reservoir) < 2:
-            return {
-                "diversity_avg": 0, "diversity_min": 0, "diversity_max": 0,
-                "reservoir_size": len(self.reservoir), "threshold": self.diversity_threshold
-            }
-        
-        # Solo muestrear para estadísticas (no calcular todo)
-        sample_size = min(10, len(self.reservoir))
-        sample_indices = random.sample(range(len(self.reservoir)), sample_size)
-        
-        diversities = []
-        for i in range(len(sample_indices)):
-            for j in range(i+1, len(sample_indices)):
-                div = self.calculate_diversity(
-                    self.reservoir[sample_indices[i]], 
-                    self.reservoir[sample_indices[j]]
-                )
-                diversities.append(div)
-        
-        if not diversities:
             return {"diversity_avg": 0, "diversity_min": 0, "diversity_max": 0}
+            
+        diversities = []
         
-        # Estadísticas de tamaños (rápido)
-        sizes = [len(sc) for sc in self.reservoir]
+        # Calculate diversity between all pairs
+        for i in range(len(self.reservoir)):
+            for j in range(i+1, len(self.reservoir)):
+                diversities.append(self.calculate_diversity(self.reservoir[i], self.reservoir[j]))
         
+        # Count instruction types across all shellcodes
+        instruction_types_counts = Counter()
+        for shellcode in self.reservoir:
+            shellcode_id = self._get_shellcode_id(shellcode)
+            if shellcode_id not in self.features_cache:
+                self.extract_features(shellcode)
+            
+            types = self.features_cache[shellcode_id]["instruction_types"]
+            for type_name, count in types.items():
+                if count > 0:
+                    instruction_types_counts[type_name] += 1
+                
         return {
             "diversity_avg": sum(diversities) / len(diversities),
             "diversity_min": min(diversities),
             "diversity_max": max(diversities),
             "unique_crash_types": len(self.crash_types),
             "reservoir_size": len(self.reservoir),
-            "utilization": len(self.reservoir) / self.max_size,
-            "threshold": self.diversity_threshold,
-            "total_calculations": self._diversity_calculations,
-            "size_stats": {
-                "min": min(sizes) if sizes else 0,
-                "max": max(sizes) if sizes else 0,
-                "avg": sum(sizes) / len(sizes) if sizes else 0
-            }
+            "avg_shellcode_length": sum(len(sc) for sc in self.reservoir) / len(self.reservoir),
+            "instruction_types_distribution": dict(instruction_types_counts.most_common())
         }
     
     def clear_cache(self):
-        """Limpieza simple"""
+        """Clears the feature cache to save memory."""
         self.features_cache = {}
-    
-    def get_quick_status(self):
-        """Status rápido del sistema"""
-        return {
-            "version": "Fast & Practical",
-            "reservoir_size": len(self.reservoir),
-            "max_size": self.max_size,
-            "utilization": f"{(len(self.reservoir)/self.max_size)*100:.1f}%",
-            "threshold": self.diversity_threshold,
-            "total_calculations": self._diversity_calculations,
-            "additions_attempted": self._additions_count,
-            "acceptance_rate": f"{(len(self.reservoir)/max(self._additions_count,1))*100:.1f}%"
-        }
-    
-    def suggest_threshold_adjustment(self):
-        """Sugerencia inteligente de threshold"""
-        if self._additions_count < 10:
-            return "Need more data"
-        
-        acceptance_rate = len(self.reservoir) / self._additions_count
-        utilization = len(self.reservoir) / self.max_size
-        
-        if acceptance_rate < 0.1:  # Menos del 10% aceptado
-            return f"Consider lowering threshold from {self.diversity_threshold:.2f} to {max(0.2, self.diversity_threshold-0.2):.2f}"
-        elif acceptance_rate > 0.8 and utilization > 0.9:  # Demasiado fácil y reservorio lleno
-            return f"Consider raising threshold from {self.diversity_threshold:.2f} to {min(0.8, self.diversity_threshold+0.1):.2f}"
-        else:
-            return f"Current threshold {self.diversity_threshold:.2f} seems optimal"
-
