@@ -311,6 +311,36 @@ def analyze_dna_shellcode(crash):
     print(f"Unique bytes: {len(frequency)}")
     input("Press ENTER to continue...")
 
+def add_parent_dna_to_reservoir(crash):
+    """Load parent shellcode from crash JSON and add it to the reservoir."""
+    if not os.path.exists(crash['json_path']):
+        print("JSON file not found.")
+        input("Press ENTER to continue...")
+        return
+
+    try:
+        with open(crash['json_path'], 'r') as f:
+            data = json.load(f)
+        parent_hex = data.get('parent_shellcode_hex')
+        if not parent_hex:
+            print("Parent shellcode not recorded for this crash.")
+            input("Press ENTER to continue...")
+            return
+        parent_shellcode = bytes.fromhex(parent_hex)
+    except Exception as e:
+        print(f"Failed to load parent shellcode: {e}")
+        input("Press ENTER to continue...")
+        return
+
+    reservoir = GeneticReservoir()
+    reservoir.load_from_file('kernelhunter_reservoir.pkl')
+    if reservoir.add(parent_shellcode):
+        print("Parent shellcode added to genetic reservoir.")
+    else:
+        print("Parent shellcode rejected or already present.")
+    reservoir.save_to_file('kernelhunter_reservoir.pkl')
+    input("Press ENTER to continue...")
+
 
     
 def generate_diagnostic_report_silent(crash):
