@@ -1088,10 +1088,10 @@ def run_generation(gen_id, base_population):
 
             #c_path = os.path.join(gen_path, f"prog_{i:04d}.c")
             #bin_path = os.path.join(gen_path, f"prog_{i:04d}")
-            #c_path = os.path.join(gen_path, f"g{gen_id:04d}_p{i:04d}.c")
-            #bin_path = os.path.join(gen_path, f"g{gen_id:04d}_p{i:04d}")
-            c_path = os.path.join(gen_path, f"gen{gen_id:04d}_prog{i:04d}.c")
-            bin_path = os.path.join(gen_path, f"gen{gen_id:04d}_prog{i:04d}")
+            c_path = os.path.join(gen_path, f"g{gen_id:04d}_p{i:04d}.c")
+            bin_path = os.path.join(gen_path, f"g{gen_id:04d}_p{i:04d}")
+            #c_path = os.path.join(gen_path, f"gen{gen_id:04d}_prog{i:04d}.c")
+            #bin_path = os.path.join(gen_path, f"gen{gen_id:04d}_prog{i:04d}")
             
             with open(c_path, "w") as f:
                 f.write(stub)
