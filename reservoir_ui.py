@@ -105,16 +105,32 @@ class ReservoirUI:
                     ascending = True
 
     def edit_shellcode(self, stdscr, index):
-        """Prompt the user to edit a shellcode in hex."""
-        curses.echo()
+        """Open an external editor to modify the shellcode."""
+        import tempfile
+        import subprocess
+
+        sc = self.reservoir.reservoir[index]
+        editor = os.environ.get("EDITOR", "nano")
+
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as tmp:
+            tmp.write(sc.hex())
+            tmp_path = tmp.name
+
+        # Suspend curses, open editor, then resume
+        curses.def_prog_mode()
+        curses.endwin()
+        subprocess.call([editor, tmp_path])
+        curses.reset_prog_mode()
+        curses.curs_set(0)
         stdscr.clear()
-        stdscr.addstr(0, 2, f"Edit shellcode {index} (hex bytes):")
         stdscr.refresh()
-        new_hex = stdscr.getstr().decode().strip()
-        curses.noecho()
+
         try:
+            with open(tmp_path, "r") as f:
+                new_hex = f.read().strip()
+            os.remove(tmp_path)
             new_bytes = bytes.fromhex(new_hex)
-        except ValueError:
+        except Exception:
             self.show_message(stdscr, "Invalid hex input")
             return
 
