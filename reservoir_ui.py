@@ -194,21 +194,29 @@ class ReservoirUI:
         return lines
 
     def analyze_shellcode(self, stdscr, index):
-        """Display a detailed textual analysis for a shellcode."""
+        """Show analysis in an external editor so it can be scrolled."""
         shellcode = self.reservoir.reservoir[index]
         report = self._generate_analysis_report(shellcode)
+
+        import tempfile
+        import subprocess
+
+        editor = os.environ.get("EDITOR", "nano")
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as tmp:
+            tmp.write("\n".join(report))
+            path = tmp.name
+
+        curses.def_prog_mode()
+        curses.endwin()
+        subprocess.call([editor, path])
+        curses.reset_prog_mode()
+        curses.curs_set(0)
         stdscr.clear()
-        stdscr.addstr(0, 2, f"Shellcode {index} analysis", curses.A_BOLD)
-        y = 2
-        height, width = stdscr.getmaxyx()
-        for line in report:
-            if y >= height - 2:
-                break
-            stdscr.addstr(y, 2, line[:width - 4])
-            y += 1
-        stdscr.addstr(y + 1, 2, "Press any key to return")
         stdscr.refresh()
-        stdscr.getch()
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
     def export_reservoir(self, stdscr):
         curses.echo()
