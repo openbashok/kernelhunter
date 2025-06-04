@@ -6,8 +6,10 @@ from genetic_reservoir import GeneticReservoir
 
 # Store the reservoir next to this script so it is consistent regardless of the
 # current working directory.
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESERVOIR_FILE = os.path.join(SCRIPT_DIR, "kernelhunter_reservoir.pkl")
+#SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+#RESERVOIR_FILE = os.path.join(SCRIPT_DIR, "kernelhunter_reservoir.pkl")
+RESERVOIR_FILE = "kernelhunter_reservoir.pkl"
+
 
 class ReservoirUI:
     def __init__(self):
