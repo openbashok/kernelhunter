@@ -15,6 +15,11 @@ import json
 from random import randint, choice
 from collections import Counter
 from genetic_reservoir import GeneticReservoir
+try:
+    from kernelhunter_config import get_reservoir_file
+except Exception:
+    def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
+        return name
 from memory_pressure_mutation import generate_memory_pressure_fragment
 from advanced_crossover import crossover_shellcodes_advanced
 from cache_pollution_attack import generate_cache_pollution_fragment
@@ -107,7 +112,7 @@ genetic_reservoir = GeneticReservoir(max_size=200, diversity_threshold=0.3)
 
 # Optionally try to load a previous reservoir
 try:
-    genetic_reservoir.load_from_file("kernelhunter_reservoir.pkl")
+    genetic_reservoir.load_from_file(get_reservoir_file())
     print(f"Loaded genetic reservoir with {len(genetic_reservoir)} individuals")
 except:
     print("Starting with a new genetic reservoir")
@@ -1274,7 +1279,7 @@ def run_generation(gen_id, base_population):
 
     # Save state periodically
     if gen_id % 10 == 0:
-        genetic_reservoir.save_to_file("kernelhunter_reservoir.pkl")
+        genetic_reservoir.save_to_file(get_reservoir_file())
 
     # Verificar y reiniciar individuos estancados
     if crash_rate == 0 and gen_id > 0:

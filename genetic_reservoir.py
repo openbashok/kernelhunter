@@ -7,6 +7,11 @@
 import random
 import numpy as np
 from collections import Counter
+try:
+    from kernelhunter_config import get_reservoir_file
+except Exception:
+    def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
+        return name
 
 class GeneticReservoir:
     """
@@ -420,6 +425,14 @@ class GeneticReservoir:
             
         except (FileNotFoundError, KeyError, pickle.PickleError):
             return False
+
+    def save_default(self):
+        """Save the reservoir to the configured default location."""
+        self.save_to_file(get_reservoir_file())
+
+    def load_default(self) -> bool:
+        """Load the reservoir from the configured default location."""
+        return self.load_from_file(get_reservoir_file())
     
     def _count_syscalls(self, shellcode):
         """

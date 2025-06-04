@@ -7,12 +7,17 @@ import pickle
 import re
 from collections import defaultdict, Counter
 from datetime import datetime
+try:
+    from kernelhunter_config import get_reservoir_file
+except Exception:
+    def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
+        return name
 
 # Key files and paths
 METRICS_FILE = "kernelhunter_metrics.json"
 CRASH_LOG = "kernelhunter_crashes.txt" 
 LOG_FILE = "kernelhunter_survivors.txt"
-RESERVOIR_FILE = "kernelhunter_reservoir.pkl"
+RESERVOIR_FILE = get_reservoir_file()
 CRASH_DIR = "kernelhunter_critical"
 OUTPUT_DIR = "kernelhunter_generations"
 
