@@ -217,6 +217,10 @@ metrics = {
     "shellcode_lengths": []
 }
 
+# Counters for attack and mutation statistics per generation
+attack_counter = Counter()
+mutation_counter = Counter()
+
 # Contador para generaciones consecutivas sin crashes por individuo
 individual_zero_crash_counts = {}
 MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS = 15  # Máximo de generaciones sin crash para un individuo
@@ -355,6 +359,7 @@ def generate_random_instruction():
         2   # ultimate_panic
     ]
     choice_type = random.choices(options, weights=weights)[0]
+    attack_counter[choice_type] += 1
 
     if choice_type == "random_bytes":
         #instr_length = randint(1, 6)
@@ -803,6 +808,7 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "transpose_nop",  # Mover fragmentos entre islas de NOP
         "crispr"    # Edición dirigida de syscalls
     ], weights=[22, 12, 18, 18, 10, 8, 8, 4])[0]
+    mutation_counter[mutation_type] += 1
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -910,7 +916,11 @@ def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, retu
 
 def run_generation(gen_id, base_population):
     """Ejecuta una generación completa del algoritmo evolutivo"""
-    global individual_zero_crash_counts
+    global individual_zero_crash_counts, attack_counter, mutation_counter
+
+    # Reset counters for this generation
+    attack_counter.clear()
+    mutation_counter.clear()
 
     gen_path = os.path.join(OUTPUT_DIR, f"gen_{gen_id:04d}")
     os.makedirs(gen_path, exist_ok=True)
@@ -1264,6 +1274,8 @@ def run_generation(gen_id, base_population):
     metrics["system_impacts"].append(system_impacts)
     metrics["shellcode_lengths"].append(avg_length)
     metrics["crash_types"][gen_id] = dict(crash_types_counter)
+    metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
+    metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
 
     # Guardar checkpoint periódico
     if gen_id % CHECKPOINT_INTERVAL == 0:
