@@ -6,10 +6,17 @@ import time
 import argparse
 import sys
 
+# Load configuration helper
+try:
+    from kernelhunter_config import get_api_key
+except Exception:
+    def get_api_key():
+        return ""
+
 # API key and endpoint information
-# You need to set your OpenAI API key as an environment variable
-# export OPENAI_API_KEY=your_api_key_here
-API_KEY = os.getenv("OPENAI_API_KEY")
+# The API key is read from the environment variable ``OPENAI_API_KEY``
+# or from ``/etc/kernelhunter/config.json`` if available.
+API_KEY = os.getenv("OPENAI_API_KEY") or get_api_key()
 API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 
 def analyze_report(report_path):
@@ -17,8 +24,8 @@ def analyze_report(report_path):
     Analyze a diagnostic report using the OpenAI API
     """
     if not API_KEY:
-        print("Error: OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
-        print("Example: export OPENAI_API_KEY=your_api_key_here")
+        print("Error: OpenAI API key not found. Set the OPENAI_API_KEY environment variable")
+        print("or specify it in /etc/kernelhunter/config.json")
         return None
     
     # Read report file

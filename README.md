@@ -67,6 +67,26 @@ kernelhunter
 
 After installation, KernelHunter will be available globally for the current user under `~/.local/bin/kernelhunter`.
 
+## Configuration
+
+KernelHunter centralizes its configuration in `/etc/kernelhunter/config.json`.
+The file is created automatically when running the configuration helper:
+
+```bash
+$ python kernelhunter_config.py --show
+```
+
+The configuration contains the path to the genetic reservoir directory and the
+OpenAI API key used by the analysis modules. You can update these values with:
+
+```bash
+$ sudo python kernelhunter_config.py --reservoir-path /custom/reservoir
+$ sudo python kernelhunter_config.py --api-key YOUR_OPENAI_KEY
+```
+
+The `OPENAI_API_KEY` environment variable still takes precedence over the value
+stored in the configuration file.
+
 
 
 ## Quick Start

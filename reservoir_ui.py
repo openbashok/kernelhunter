@@ -3,12 +3,17 @@
 import curses
 import os
 from genetic_reservoir import GeneticReservoir
+try:
+    from kernelhunter_config import get_reservoir_file
+except Exception:
+    def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
+        return name
 
 # Store the reservoir next to this script so it is consistent regardless of the
 # current working directory.
 #SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 #RESERVOIR_FILE = os.path.join(SCRIPT_DIR, "kernelhunter_reservoir.pkl")
-RESERVOIR_FILE = "kernelhunter_reservoir.pkl"
+RESERVOIR_FILE = get_reservoir_file()
 
 
 class ReservoirUI:
@@ -17,8 +22,8 @@ class ReservoirUI:
         self.load()
 
     def load(self):
-        if os.path.exists(RESERVOIR_FILE) and self.reservoir.load_from_file(RESERVOIR_FILE):
-            return True
+        if os.path.exists(RESERVOIR_FILE):
+            return self.reservoir.load_from_file(RESERVOIR_FILE)
         self.reservoir = GeneticReservoir()
         return False
 

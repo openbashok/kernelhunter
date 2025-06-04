@@ -8,6 +8,11 @@ import sys
 import importlib.util
 import re
 import json
+try:
+    from kernelhunter_config import get_reservoir_file
+except Exception:
+    def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
+        return name
 from genetic_reservoir import GeneticReservoir
 
 CSV_LOG_PATH = "kernel_errors.csv"
@@ -442,12 +447,12 @@ def add_parent_dna_to_reservoir(crash):
     print(f"Shellcode preview: {preview}")
 
     reservoir = GeneticReservoir()
-    reservoir.load_from_file('kernelhunter_reservoir.pkl')
+    reservoir.load_from_file(get_reservoir_file())
     if reservoir.add_simple(shellcode_bytes):
         print("Shellcode added to genetic reservoir.")
     else:
         print("Shellcode rejected or already present.")
-    reservoir.save_to_file('kernelhunter_reservoir.pkl')
+    reservoir.save_to_file(get_reservoir_file())
     input("Press ENTER to continue...")
 
 
@@ -490,12 +495,12 @@ def add_crash_dna_to_reservoir(crash):
     print(f"Shellcode preview: {preview}")
 
     reservoir = GeneticReservoir()
-    reservoir.load_from_file('kernelhunter_reservoir.pkl')
+    reservoir.load_from_file(get_reservoir_file())
     if reservoir.add_simple(shellcode_bytes):
         print("Shellcode added to genetic reservoir.")
     else:
         print("Shellcode rejected or already present.")
-    reservoir.save_to_file('kernelhunter_reservoir.pkl')
+    reservoir.save_to_file(get_reservoir_file())
     input("Press ENTER to continue...")
 
 
