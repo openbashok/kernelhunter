@@ -57,6 +57,7 @@ cd kernelhunter
 
 # 2. Run the installer (no root required)
 python install_kernelhunter.py
+#    (you will be asked for your OpenAI API key)
 
 # 3. (Optional) Restart your terminal or run:
 source ~/.bashrc
@@ -67,6 +68,7 @@ kernelhunter
 The previous `install_kernelhunter.sh` script is now deprecated.
 
 After installation, KernelHunter will be available under `~/.local/bin/kernelhunter` for the current user. During installation you can choose whether the configuration is stored globally in `/etc/kernelhunter` or locally in `~/.config/kernelhunter`.
+The installer will also create an empty genetic reservoir if none is present.
 
 ## Configuration
 
