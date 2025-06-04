@@ -54,25 +54,30 @@ class KernelHunterMonitor:
         """Load genetic reservoir if available"""
         try:
             if os.path.exists(RESERVOIR_FILE):
-                with open(RESERVOIR_FILE, 'rb') as f:
-                    reservoir_data = pickle.load(f)
-                
-                # Extract basic info
-                self.metrics["reservoir_size"] = len(reservoir_data.get("reservoir", []))
-                self.genetic_reservoir = reservoir_data
-                
-                # Check if we can extract more detailed stats
-                if hasattr(reservoir_data, 'get_diversity_stats'):
+                from genetic_reservoir import GeneticReservoir
+
+                reservoir = GeneticReservoir()
+                if reservoir.load_from_file(RESERVOIR_FILE):
+                    self.genetic_reservoir = reservoir
+                    self.metrics["reservoir_size"] = len(reservoir)
+
                     try:
-                        stats = reservoir_data.get_diversity_stats()
+                        stats = reservoir.get_diversity_stats()
                         self.reservoir_stats = stats
                         self.metrics["reservoir_diversity"] = stats.get("diversity_avg", 0.0)
                         self.metrics["instruction_diversity"] = stats.get("instruction_types_distribution", {})
-                        return True
                     except Exception:
                         pass
-                return True
-        except Exception as e:
+                    return True
+                else:
+                    # Fallback to direct pickle loading (older format)
+                    with open(RESERVOIR_FILE, 'rb') as f:
+                        data = pickle.load(f)
+                    if isinstance(data, dict):
+                        self.metrics["reservoir_size"] = len(data.get("reservoir", []))
+                        self.genetic_reservoir = None
+                        return True
+        except Exception:
             return False
         return False
     
