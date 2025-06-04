@@ -154,7 +154,14 @@ class ReservoirUI:
         """Return a list of textual lines summarising the shellcode."""
         from collections import Counter
         import math
-        from kernelhunter import interpret_instruction
+        try:
+            from kernelhunter import interpret_instruction
+        except Exception:  # fallback when running from source
+            try:
+                from kernelHunter import interpret_instruction
+            except Exception:
+                def interpret_instruction(_bytes):
+                    return "instrucción desconocida"
 
         features = self.reservoir.extract_features(shellcode)
 
