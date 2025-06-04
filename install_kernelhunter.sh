@@ -1,4 +1,5 @@
 #!/bin/bash
+# DEPRECATED: Use install_kernelhunter.py instead
 
 set -e
 

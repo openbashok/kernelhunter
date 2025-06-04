@@ -56,7 +56,7 @@ git clone https://github.com/openbashok/kernelhunter
 cd kernelhunter
 
 # 2. Run the installer (no root required)
-./install_kernelhunter.sh
+python install_kernelhunter.py
 
 # 3. (Optional) Restart your terminal or run:
 source ~/.bashrc
@@ -64,6 +64,7 @@ source ~/.bashrc
 # 4. Run it from anywhere:
 kernelhunter
 ```
+The previous `install_kernelhunter.sh` script is now deprecated.
 
 After installation, KernelHunter will be available under `~/.local/bin/kernelhunter` for the current user. During installation you can choose whether the configuration is stored globally in `/etc/kernelhunter` or locally in `~/.config/kernelhunter`.
 
