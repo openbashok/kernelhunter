@@ -70,6 +70,13 @@ The previous `install_kernelhunter.sh` script is now deprecated.
 After installation, KernelHunter will be available under `~/.local/bin/kernelhunter` for the current user. During installation you can choose whether the configuration is stored globally in `/etc/kernelhunter` or locally in `~/.config/kernelhunter`.
 The installer will also create an empty genetic reservoir if none is present.
 
+If you choose a **global** installation, this reservoir lives in
+`/var/lib/kernelhunter/reservoir` and the directory is created with mode
+`1777`, allowing all users to write to it (similar to `/tmp`). This makes the
+reservoir shared across accounts but may not be desirable in hardened
+environments. A **local** installation (`--scope local`) keeps the reservoir
+private under your home directory.
+
 ## Configuration
 
 KernelHunter keeps its configuration in either `/etc/kernelhunter/config.json` or

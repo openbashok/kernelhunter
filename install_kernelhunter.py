@@ -75,6 +75,13 @@ def main() -> None:
             from genetic_reservoir import GeneticReservoir
 
             GeneticReservoir().save_to_file(reservoir_file)
+            try:
+                if scope == "global":
+                    os.chmod(reservoir_file, 0o666)
+                else:
+                    os.chmod(reservoir_file, 0o600)
+            except PermissionError:
+                print(f"[!] Could not set permissions on {reservoir_file}.")
         except Exception as exc:
             print(f"[!] Could not create reservoir file {reservoir_file}: {exc}")
 
