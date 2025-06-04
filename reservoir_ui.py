@@ -179,17 +179,25 @@ class ReservoirUI:
             lines.append(f"  0x{b:02x}: {counter[b]}")
 
         # Detect known instruction patterns
-        found = set()
+        from collections import Counter
+
+        found = Counter()
         for i in range(len(shellcode)):
             desc = interpret_instruction(shellcode[i:i+8])
             if desc != "instrucción desconocida":
-                found.add(desc)
+                found[desc] += 1
+
         lines.append("Known instructions detected:")
         if found:
-            for d in sorted(found):
+            for d, cnt in found.most_common():
                 lines.append(f"  - {d}")
         else:
             lines.append("  None")
+
+        if found:
+            lines.append("Instruction occurrences:")
+            for d, cnt in found.most_common():
+                lines.append(f"  {d}: {cnt}")
 
         return lines
 
