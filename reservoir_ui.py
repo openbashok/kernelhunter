@@ -94,8 +94,14 @@ class ReservoirUI:
 
             visible = enumerated[offset:offset + height - 5]
             for i, (real_idx, sc) in enumerate(visible):
-                preview = " ".join(f"{b:02x}" for b in sc[:16])
-                line = f"{real_idx:04d} | {len(sc):4d} | {preview}"
+                prefix = f"{real_idx:04d} | {len(sc):4d} | "
+                avail_cols = width - 4 - len(prefix)
+                if avail_cols > 0:
+                    max_bytes = min(len(sc), (avail_cols + 1) // 3)
+                else:
+                    max_bytes = 0
+                preview = " ".join(f"{b:02x}" for b in sc[:max_bytes])
+                line = f"{prefix}{preview}"
                 attr = curses.A_REVERSE if offset + i == idx else curses.A_NORMAL
                 stdscr.addstr(i + 2, 2, line[:width - 4], attr)
 
