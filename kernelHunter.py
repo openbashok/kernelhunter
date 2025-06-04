@@ -221,6 +221,11 @@ metrics = {
 attack_counter = Counter()
 mutation_counter = Counter()
 
+def save_metrics():
+    """Persist metrics to disk."""
+    with open(METRICS_FILE, "w") as f:
+        json.dump(metrics, f, indent=2)
+
 # Contador para generaciones consecutivas sin crashes por individuo
 individual_zero_crash_counts = {}
 MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS = 15  # Máximo de generaciones sin crash para un individuo
@@ -922,6 +927,9 @@ def run_generation(gen_id, base_population):
     attack_counter.clear()
     mutation_counter.clear()
 
+    metrics.setdefault("attack_stats", {})[gen_id] = {}
+    metrics.setdefault("mutation_stats", {})[gen_id] = {}
+
     gen_path = os.path.join(OUTPUT_DIR, f"gen_{gen_id:04d}")
     os.makedirs(gen_path, exist_ok=True)
 
@@ -1249,6 +1257,11 @@ def run_generation(gen_id, base_population):
                 crashes += 1
                 crash_types_counter[crash_type] += 1
 
+            # Update metrics incrementally
+            metrics["attack_stats"][gen_id] = dict(attack_counter)
+            metrics["mutation_stats"][gen_id] = dict(mutation_counter)
+            save_metrics()
+
     # Asegurar que siempre hay población
     if not new_population:
         # Si todos crashearon, reiniciar con la población base pero con algunos modificados
@@ -1276,11 +1289,11 @@ def run_generation(gen_id, base_population):
     metrics["crash_types"][gen_id] = dict(crash_types_counter)
     metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
     metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
+    save_metrics()
 
     # Guardar checkpoint periódico
     if gen_id % CHECKPOINT_INTERVAL == 0:
-        with open(METRICS_FILE, "w") as f:
-            json.dump(metrics, f, indent=2)
+        save_metrics()
 
     # When diversity is needed, get samples from the reservoir
     if crash_rate < 0.05 and len(genetic_reservoir) >= 5:

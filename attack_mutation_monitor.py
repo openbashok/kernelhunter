@@ -31,7 +31,7 @@ class AttackMutationMonitor:
     def draw(self, stdscr):
         stdscr.clear()
         height, width = stdscr.getmaxyx()
-        title = "KernelHunter Attack/Muation Stats"
+        title = "KernelHunter Attack/Mutation Stats"
         stdscr.addstr(0, (width - len(title)) // 2, title, curses.A_BOLD)
         stdscr.addstr(1, 2, f"Latest Generation: {self.metrics['latest_gen']}")
         row = 3
