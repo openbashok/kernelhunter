@@ -13,6 +13,9 @@ class AttackMutationMonitor:
             "mutation_stats": {},
             "latest_gen": 0,
         }
+        # Totals accumulated across all generations
+        self.attack_totals = {}
+        self.mutation_totals = {}
         self.last_refresh = 0
 
     def load_metrics(self):
@@ -25,6 +28,17 @@ class AttackMutationMonitor:
                 gens = data.get("generations", [])
                 if gens:
                     self.metrics["latest_gen"] = max(gens)
+
+                # Recalculate totals each time metrics are loaded
+                self.attack_totals.clear()
+                for gen_stats in self.metrics["attack_stats"].values():
+                    for name, count in gen_stats.items():
+                        self.attack_totals[name] = self.attack_totals.get(name, 0) + count
+
+                self.mutation_totals.clear()
+                for gen_stats in self.metrics["mutation_stats"].values():
+                    for name, count in gen_stats.items():
+                        self.mutation_totals[name] = self.mutation_totals.get(name, 0) + count
             except Exception:
                 pass
 
@@ -36,10 +50,8 @@ class AttackMutationMonitor:
         stdscr.addstr(1, 2, f"Latest Generation: {self.metrics['latest_gen']}")
         row = 3
 
-        attack = self.metrics['attack_stats'].get(str(self.metrics['latest_gen']),
-                                                   self.metrics['attack_stats'].get(self.metrics['latest_gen'], {}))
-        mut = self.metrics['mutation_stats'].get(str(self.metrics['latest_gen']),
-                                                 self.metrics['mutation_stats'].get(self.metrics['latest_gen'], {}))
+        attack = self.attack_totals
+        mut = self.mutation_totals
 
         stdscr.addstr(row, 2, "Attack Types", curses.A_UNDERLINE)
         stdscr.addstr(row, width // 2, "Mutation Types", curses.A_UNDERLINE)
@@ -56,7 +68,7 @@ class AttackMutationMonitor:
                 m_name, m_count = mut_items[i]
                 stdscr.addstr(row + i, width // 2, f"{m_name}: {m_count}")
 
-        stdscr.addstr(height - 1, 0, "Press 'q' to quit | 'r' to refresh")
+        stdscr.addstr(height - 1, 0, "Press 'q' to quit")
         stdscr.refresh()
 
     def run(self, stdscr):
@@ -72,8 +84,6 @@ class AttackMutationMonitor:
             key = stdscr.getch()
             if key == ord('q'):
                 break
-            elif key == ord('r'):
-                self.load_metrics()
 
 
 def main():
