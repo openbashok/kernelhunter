@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """KernelHunter configuration management module.
 
-This module centralizes configuration settings for KernelHunter in
-``/etc/kernelhunter/config.json``. The configuration stores the path
+This module handles configuration for KernelHunter. The settings can be
+stored either globally in ``/etc/kernelhunter/config.json`` or locally in
+``~/.config/kernelhunter/config.json``. The configuration contains the path
 of the genetic reservoir directory and the OpenAI API key.
 """
 
@@ -11,42 +12,72 @@ import json
 import os
 from typing import Any, Dict
 
-CONFIG_DIR = "/etc/kernelhunter"
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+SYSTEM_CONFIG_DIR = "/etc/kernelhunter"
+USER_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", "kernelhunter")
+USER_RESERVOIR_DIR = os.path.join(os.path.expanduser("~"), ".local", "share", "kernelhunter", "reservoir")
 
-DEFAULT_CONFIG = {
+DEFAULT_SYSTEM_CONFIG = {
     "reservoir_path": "/var/lib/kernelhunter/reservoir",
     "openai_api_key": ""
 }
 
+DEFAULT_USER_CONFIG = {
+    "reservoir_path": USER_RESERVOIR_DIR,
+    "openai_api_key": ""
+}
+
+
+def get_config_dir() -> str:
+    """Return the directory where the configuration file is stored."""
+    override = os.getenv("KERNELHUNTER_CONFIG_DIR")
+    if override:
+        return override
+
+    system_cfg = os.path.join(SYSTEM_CONFIG_DIR, "config.json")
+    if os.path.exists(system_cfg):
+        return SYSTEM_CONFIG_DIR
+    return USER_CONFIG_DIR
+
+
+def get_default_config() -> Dict[str, Any]:
+    """Return default configuration for the detected scope."""
+    if get_config_dir() == SYSTEM_CONFIG_DIR:
+        return DEFAULT_SYSTEM_CONFIG
+    return DEFAULT_USER_CONFIG
+
+
+def get_config_file() -> str:
+    """Return full path to the configuration file."""
+    return os.path.join(get_config_dir(), "config.json")
+
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration from the config file.
+    """Load configuration from the config file with sane defaults."""
+    filename = get_config_file()
+    default_cfg = get_default_config()
 
-    Returns the configuration with defaults applied if the file does not exist.
-    """
-    if not os.path.exists(CONFIG_FILE):
-        return DEFAULT_CONFIG.copy()
+    if not os.path.exists(filename):
+        return default_cfg.copy()
 
     try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError):
-        # Fallback to defaults on any read/parse error
-        return DEFAULT_CONFIG.copy()
+        return default_cfg.copy()
 
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update({k: v for k, v in data.items() if k in DEFAULT_CONFIG})
+    cfg = default_cfg.copy()
+    cfg.update({k: v for k, v in data.items() if k in default_cfg})
     return cfg
 
 
 def save_config(cfg: Dict[str, Any]) -> None:
     """Save configuration to the config file."""
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    filename = get_config_file()
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=4)
     try:
-        os.chmod(CONFIG_FILE, 0o600)
+        os.chmod(filename, 0o600)
     except PermissionError:
         # Ignore permission errors when running without privileges
         pass

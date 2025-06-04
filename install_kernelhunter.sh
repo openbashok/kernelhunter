@@ -22,6 +22,46 @@ if [[ "$EUID" -eq 0 ]]; then
     fi
 fi
 
+# Ask configuration scope
+echo ""
+echo "Choose configuration scope:"
+echo " 1) Global (/etc/kernelhunter)"
+echo " 2) Local  (~/.config/kernelhunter)"
+read -p "Scope [1/2]: " scope
+if [[ "$scope" == "1" ]]; then
+    CONFIG_DIR="/etc/kernelhunter"
+    RESERVOIR_DIR="/var/lib/kernelhunter/reservoir"
+    SUDO=""
+    if [[ "$EUID" -ne 0 ]]; then
+        SUDO="sudo"
+    fi
+else
+    CONFIG_DIR="$HOME/.config/kernelhunter"
+    RESERVOIR_DIR="$HOME/.local/share/kernelhunter/reservoir"
+    SUDO=""
+fi
+
+# Create configuration and reservoir directories
+$SUDO mkdir -p "$CONFIG_DIR"
+$SUDO mkdir -p "$RESERVOIR_DIR"
+
+if [[ "$scope" == "1" ]]; then
+    $SUDO chmod 1777 "$RESERVOIR_DIR"
+else
+    chmod 700 "$RESERVOIR_DIR"
+fi
+
+# Create initial config file
+tmpcfg=$(mktemp)
+cat > "$tmpcfg" <<EOF
+{
+    "reservoir_path": "$RESERVOIR_DIR",
+    "openai_api_key": ""
+}
+EOF
+$SUDO mv "$tmpcfg" "$CONFIG_DIR/config.json"
+$SUDO chmod 600 "$CONFIG_DIR/config.json"
+
 # Installation target
 INSTALL_DIR="$HOME/.local/share/kernelhunter"
 BIN_DIR="$HOME/.local/bin"
