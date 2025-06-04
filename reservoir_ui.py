@@ -2,6 +2,7 @@
 """Interactive TUI to inspect KernelHunter's genetic reservoir."""
 import curses
 import os
+import time
 from genetic_reservoir import GeneticReservoir
 try:
     from kernelhunter_config import get_reservoir_file
@@ -17,8 +18,11 @@ RESERVOIR_FILE = get_reservoir_file()
 
 
 class ReservoirUI:
-    def __init__(self):
+    def __init__(self, refresh_seconds: int = 5, loop_delay_ms: int = 200):
         self.reservoir = GeneticReservoir()
+        self.refresh_seconds = refresh_seconds
+        self.loop_delay_ms = loop_delay_ms
+        self.last_reload = time.time()
         self.load()
 
     def load(self):
@@ -37,7 +41,9 @@ class ReservoirUI:
         if pause:
             stdscr.addstr(2, 2, "Press any key to continue")
             stdscr.refresh()
+            stdscr.timeout(-1)
             stdscr.getch()
+            stdscr.timeout(self.loop_delay_ms)
         else:
             stdscr.refresh()
 
@@ -58,18 +64,27 @@ class ReservoirUI:
             stdscr.addstr(i + 2, 2, line)
         stdscr.addstr(len(lines) + 3, 2, "Press any key to return")
         stdscr.refresh()
+        stdscr.timeout(-1)
         stdscr.getch()
+        stdscr.timeout(self.loop_delay_ms)
 
     def list_shellcodes(self, stdscr):
         idx = 0
         offset = 0
         sort_key = "index"
         ascending = True
+        stdscr.timeout(self.loop_delay_ms)
+        last_reload = time.time()
         while True:
             stdscr.clear()
             stdscr.addstr(0, 2, "Shellcodes (q to return)", curses.A_BOLD)
             stdscr.addstr(1, 2, "Arrows: move  d:delete  e:edit  a:analyze  s:sort", curses.A_DIM)
             height, width = stdscr.getmaxyx()
+
+            now = time.time()
+            if now - last_reload >= self.refresh_seconds:
+                self.load()
+                last_reload = now
 
             enumerated = list(enumerate(self.reservoir.reservoir))
             if sort_key == "length":
@@ -86,6 +101,8 @@ class ReservoirUI:
 
             stdscr.refresh()
             key = stdscr.getch()
+            if key == -1:
+                continue
             if key in (ord('q'), 27):
                 break
             if key == curses.KEY_UP and idx > 0:
@@ -246,14 +263,18 @@ class ReservoirUI:
 
         stdscr.addstr(0, 2, "Press any key to return")
         stdscr.refresh()
+        stdscr.timeout(-1)
         stdscr.getch()
+        stdscr.timeout(self.loop_delay_ms)
 
     def export_reservoir(self, stdscr):
         curses.echo()
         stdscr.clear()
         stdscr.addstr(0, 2, "Export filename: ")
         stdscr.refresh()
+        stdscr.timeout(-1)
         path = stdscr.getstr().decode().strip()
+        stdscr.timeout(self.loop_delay_ms)
         curses.noecho()
         if path:
             try:
@@ -268,7 +289,9 @@ class ReservoirUI:
         stdscr.clear()
         stdscr.addstr(0, 2, "Clear reservoir and delete file? (y/n)")
         stdscr.refresh()
+        stdscr.timeout(-1)
         key = stdscr.getch()
+        stdscr.timeout(self.loop_delay_ms)
         if key in (ord('y'), ord('Y')):
             self.reservoir = GeneticReservoir()
             if os.path.exists(RESERVOIR_FILE):
@@ -285,11 +308,14 @@ class ReservoirUI:
             self.show_message(stdscr, "Reservoir loaded", pause=False)
         else:
             self.show_message(stdscr, "Reservoir file not found; new reservoir created", pause=False)
+        stdscr.timeout(-1)
         stdscr.getch()
+        stdscr.timeout(self.loop_delay_ms)
 
     # -------------------- Main loop --------------------
     def run(self, stdscr):
         curses.curs_set(0)
+        stdscr.timeout(self.loop_delay_ms)
         options = [
             "View summary",
             "List shellcodes",
@@ -300,6 +326,11 @@ class ReservoirUI:
         ]
         idx = 0
         while True:
+            now = time.time()
+            if now - self.last_reload >= self.refresh_seconds:
+                self.load()
+                self.last_reload = now
+
             stdscr.clear()
             stdscr.addstr(0, 2, "KernelHunter - Reservoir Manager", curses.A_BOLD)
             for i, opt in enumerate(options):
@@ -307,6 +338,8 @@ class ReservoirUI:
                 stdscr.addstr(i + 2, 4, opt, attr)
             stdscr.refresh()
             key = stdscr.getch()
+            if key == -1:
+                continue
             if key == curses.KEY_UP and idx > 0:
                 idx -= 1
             elif key == curses.KEY_DOWN and idx < len(options) - 1:
