@@ -189,3 +189,17 @@ Use the arrow keys and Enter to select one of the following options:
 - Quit
 
 When a tool exits you will be returned to the menu.
+
+## tmux launcher
+
+The repository includes `tmux_launcher.sh` for quickly opening the monitoring tools in a grid of tmux panes. It requires `tmux` to be installed on your system.
+
+Run it from the repository root with:
+
+```bash
+./tmux_launcher.sh
+```
+
+This will start the KernelHunter monitor, the reservoir UI, the crash UI, and the dashboard in one tmux session arranged in two columns.
+
+
