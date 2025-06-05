@@ -11,9 +11,10 @@ class AttackMutationMonitor:
         self.metrics = {
             "attack_stats": {},
             "mutation_stats": {},
+            "attack_totals": {},
+            "mutation_totals": {},
             "latest_gen": 0,
         }
-        # Totals accumulated across all generations
         self.attack_totals = {}
         self.mutation_totals = {}
         self.last_refresh = 0
@@ -25,20 +26,28 @@ class AttackMutationMonitor:
                     data = json.load(f)
                 self.metrics["attack_stats"] = data.get("attack_stats", {})
                 self.metrics["mutation_stats"] = data.get("mutation_stats", {})
+                self.metrics["attack_totals"] = data.get("attack_totals", {})
+                self.metrics["mutation_totals"] = data.get("mutation_totals", {})
                 gens = data.get("generations", [])
                 if gens:
                     self.metrics["latest_gen"] = max(gens)
 
-                # Recalculate totals each time metrics are loaded
-                self.attack_totals.clear()
-                for gen_stats in self.metrics["attack_stats"].values():
-                    for name, count in gen_stats.items():
-                        self.attack_totals[name] = self.attack_totals.get(name, 0) + count
+                # Use totals if present, otherwise fall back to aggregating stats
+                if self.metrics["attack_totals"]:
+                    self.attack_totals = dict(self.metrics["attack_totals"])
+                else:
+                    self.attack_totals.clear()
+                    for gen_stats in self.metrics["attack_stats"].values():
+                        for name, count in gen_stats.items():
+                            self.attack_totals[name] = self.attack_totals.get(name, 0) + count
 
-                self.mutation_totals.clear()
-                for gen_stats in self.metrics["mutation_stats"].values():
-                    for name, count in gen_stats.items():
-                        self.mutation_totals[name] = self.mutation_totals.get(name, 0) + count
+                if self.metrics["mutation_totals"]:
+                    self.mutation_totals = dict(self.metrics["mutation_totals"])
+                else:
+                    self.mutation_totals.clear()
+                    for gen_stats in self.metrics["mutation_stats"].values():
+                        for name, count in gen_stats.items():
+                            self.mutation_totals[name] = self.mutation_totals.get(name, 0) + count
             except Exception:
                 pass
 

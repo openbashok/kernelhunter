@@ -214,12 +214,22 @@ metrics = {
     "crash_rates": [],
     "crash_types": {},
     "system_impacts": [],
-    "shellcode_lengths": []
+    "shellcode_lengths": [],
+    # Totals across the entire fuzzing run
+    "attack_totals": {},
+    "mutation_totals": {},
 }
 
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
+
+def write_metrics():
+    """Persist current metrics to disk"""
+    try:
+        write_metrics()
+    except Exception:
+        pass
 
 # Contador para generaciones consecutivas sin crashes por individuo
 individual_zero_crash_counts = {}
@@ -360,6 +370,8 @@ def generate_random_instruction():
     ]
     choice_type = random.choices(options, weights=weights)[0]
     attack_counter[choice_type] += 1
+    metrics.setdefault("attack_totals", {})[choice_type] = metrics["attack_totals"].get(choice_type, 0) + 1
+    write_metrics()
 
     if choice_type == "random_bytes":
         #instr_length = randint(1, 6)
@@ -809,6 +821,8 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         "crispr"    # Edición dirigida de syscalls
     ], weights=[22, 12, 18, 18, 10, 8, 8, 4])[0]
     mutation_counter[mutation_type] += 1
+    metrics.setdefault("mutation_totals", {})[mutation_type] = metrics["mutation_totals"].get(mutation_type, 0) + 1
+    write_metrics()
 
     if mutation_type == "add" or not core:
         # Añadir instrucción (caso más común)
@@ -1276,6 +1290,7 @@ def run_generation(gen_id, base_population):
     metrics["crash_types"][gen_id] = dict(crash_types_counter)
     metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
     metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
+    write_metrics()
 
     # Guardar checkpoint periódico
     if gen_id % CHECKPOINT_INTERVAL == 0:
@@ -1481,8 +1496,7 @@ def main():
 
     finally:
         print("\nGuardando métricas finales...")
-        with open(METRICS_FILE, "w") as f:
-            json.dump(metrics, f, indent=2)
+        write_metrics()
 
         print("\nEvolución completada.")
         analyze_crash_files()
