@@ -52,7 +52,9 @@ def run_menu(stdscr):
                 break
             curses.endwin()
             script_path = os.path.join(BASE_DIR, script)
-            subprocess.call(["python3", script_path])
+            # Ensure each tool runs from the installation directory so that
+            # relative paths inside those scripts resolve correctly.
+            subprocess.call(["python3", script_path], cwd=BASE_DIR)
             stdscr = curses.initscr()
             curses.curs_set(0)
             stdscr.keypad(True)
