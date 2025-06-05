@@ -190,6 +190,17 @@ Use the arrow keys and Enter to select one of the following options:
 
 When a tool exits you will be returned to the menu.
 
+## OllyDbg-style interface
+
+For a split-screen view inspired by OllyDbg, use the alternative menu:
+
+```bash
+python ollydbg_menu.py
+```
+
+The left panel lists available tools and the right panel shows their output.
+Use the arrow keys to navigate, Enter to run the selected tool, and `q` to quit.
+
 ## tmux launcher
 
 The repository includes `tmux_launcher.sh` for quickly opening the monitoring tools in a grid of tmux panes. It requires `tmux` to be installed on your system.
