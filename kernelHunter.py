@@ -227,8 +227,11 @@ mutation_counter = Counter()
 def write_metrics():
     """Persist current metrics to disk"""
     try:
-        write_metrics()
+        with open(METRICS_FILE, "w") as f:
+            json.dump(metrics, f, indent=2)
     except Exception:
+        # Silently ignore errors when persisting metrics so the fuzzer can
+        # continue running even if writing fails (e.g. due to filesystem issues)
         pass
 
 # Contador para generaciones consecutivas sin crashes por individuo
