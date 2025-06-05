@@ -169,3 +169,23 @@ Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
 
 
 
+
+## Menu interface
+
+KernelHunter includes a curses-based menu for launching the different tools. Start it with:
+
+```bash
+python menu.py
+```
+
+Use the arrow keys and Enter to select one of the following options:
+
+- Run KernelHunter Fuzzer
+- Crash Explorer
+- Reservoir Manager
+- KernelHunter Monitor
+- Attack/Mutation Stats
+- Kernel Error Dashboard
+- Quit
+
+When a tool exits you will be returned to the menu.
