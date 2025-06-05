@@ -9,6 +9,7 @@ resulting report is saved as a text file for offline analysis.
 import json
 import os
 import pickle
+import curses
 from datetime import datetime
 from statistics import mean
 
@@ -167,10 +168,52 @@ def generate_report(output_path: str = REPORT_FILE) -> None:
     print(f"Report written to {output_path}")
 
 
+def view_report_curses(stdscr, report_path: str = REPORT_FILE):
+    """Simple curses UI to view and regenerate the report."""
+    curses.curs_set(0)
+    offset = 0
+    while True:
+        if os.path.exists(report_path):
+            with open(report_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        else:
+            lines = ["Report not found. Press 'r' to generate it."]
+
+        height, width = stdscr.getmaxyx()
+        max_lines = height - 2
+        offset = max(0, min(offset, max(0, len(lines) - max_lines)))
+
+        stdscr.clear()
+        for i in range(max_lines):
+            if offset + i >= len(lines):
+                break
+            stdscr.addstr(i, 0, lines[offset + i][: width - 1])
+
+        stdscr.addstr(height - 1, 0, "↑↓ scroll  r: regenerate  q: quit")
+        stdscr.refresh()
+
+        key = stdscr.getch()
+        if key == curses.KEY_UP and offset > 0:
+            offset -= 1
+        elif key == curses.KEY_DOWN and offset < len(lines) - max_lines:
+            offset += 1
+        elif key == ord('q'):
+            break
+        elif key == ord('r'):
+            generate_report(report_path)
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate a KernelHunter report")
     parser.add_argument("--output", default=REPORT_FILE, help="Output report file")
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Launch a curses interface to view and regenerate the report",
+    )
     args = parser.parse_args()
     generate_report(args.output)
+    if args.interactive:
+        curses.wrapper(view_report_curses, args.output)
