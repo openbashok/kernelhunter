@@ -3,6 +3,9 @@
 
 import curses
 import subprocess
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MENU_ITEMS = [
     ("Run KernelHunter Fuzzer", "kernelHunter.py"),
@@ -48,7 +51,8 @@ def run_menu(stdscr):
             if label == "Quit":
                 break
             curses.endwin()
-            subprocess.call(["python3", script])
+            script_path = os.path.join(BASE_DIR, script)
+            subprocess.call(["python3", script_path], cwd=BASE_DIR)
             stdscr = curses.initscr()
             curses.curs_set(0)
             stdscr.keypad(True)
