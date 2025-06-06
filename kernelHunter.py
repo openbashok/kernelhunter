@@ -1632,7 +1632,6 @@ def main():
         for gen in range(MAX_GENERATIONS):
             print(f"\nGeneración {gen}/{MAX_GENERATIONS} (población: {len(population)})")
             population = run_generation(gen, population)
-            time.sleep(0.2)
 
     except KeyboardInterrupt:
         print("\n\nProceso interrumpido por el usuario.")
