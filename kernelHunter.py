@@ -18,6 +18,7 @@ import multiprocessing
 from random import randint, choice
 from collections import Counter, defaultdict, deque
 from genetic_reservoir import GeneticReservoir
+from performance_logger import PerformanceLogger
 try:
     from kernelhunter_config import get_reservoir_file, load_config
 except Exception:
@@ -64,6 +65,9 @@ from syscall_table_stress import generate_syscall_table_stress_fragment
 from transposition_mutation_nop import transpose_fragment_nop_aware
 from ultimate_kernel_panic_generator import generate_ultimate_panic_fragment
 from ai_shellcode_mutation import generate_ai_shellcode_fragment
+
+# Performance logging
+pythonlogger = None
 
 # Simple ANSI color helpers for terminal output
 ANSI_COLORS = {
@@ -1722,6 +1726,17 @@ def run_generation(gen_id, base_population):
     print(color_text(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}", "cyan"))
     print(color_text(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}", "cyan"))
 
+    pythonlogger.log_generation(
+        generation_id=gen_id,
+        population_size=len(base_population),
+        crash_rate=crash_rate,
+        system_impacts=system_impacts,
+        avg_shellcode_length=avg_length,
+        crash_types=dict(crash_types_counter),
+        attack_stats=dict(generation_attack_counter),
+        mutation_stats=dict(generation_mutation_counter)
+    )
+
     # Actualizar métricas
     metrics["generations"].append(gen_id)
     metrics["crash_rates"].append(crash_rate)
@@ -2122,6 +2137,9 @@ async def main_async():
  -------------------------------------------------------------
 """
     print(banner)
+    global pythonlogger
+    pythonlogger = PerformanceLogger(f"kernelhunter_{'rl' if USE_RL_WEIGHTS else 'normal'}_{int(time.time())}")
+    pythonlogger.set_rl_mode(USE_RL_WEIGHTS)
     print(f"Configuración: {NUM_PROGRAMS} programas por generación, timeout: {TIMEOUT}s")
 
     initial = BASE_SHELLCODE
@@ -2164,6 +2182,8 @@ async def main_async():
             total_impacts = sum(metrics['system_impacts'])
             print(color_text(f"- Total de impactos potenciales al sistema: {total_impacts}", "magenta"))
             print(color_text(f"- Directorio de crashes críticos: kernelhunter_critical/", "magenta"))
+
+        pythonlogger.finalize_session()
 
         print(color_text("\nKernelHunter ha completado su ejecución.", "green"))
 
