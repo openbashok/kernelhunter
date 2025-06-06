@@ -1739,7 +1739,8 @@ def run_generation(gen_id, base_population):
     diversity_data = genetic_reservoir.get_diversity_stats()
 
     print(f"[DEBUG] Llamando a log_generation con gen_id={gen_id}")
-    print(f"[DEBUG] population_size={len(base_population)} crash_rate={crash_rate} system_impacts={system_impacts} avg_len={avg_length}")
+    print(f"[DEBUG] population_size={NUM_PROGRAMS} crash_rate={crash_rate}")
+    print(f"[DEBUG] base_population={len(base_population)} new_population={len(new_population)}")
     print(f"[DEBUG] crash_types={dict(crash_types_counter)}")
     print(f"[DEBUG] attack_stats={dict(generation_attack_counter)}")
     print(f"[DEBUG] mutation_stats={dict(generation_mutation_counter)}")
@@ -1748,7 +1749,7 @@ def run_generation(gen_id, base_population):
 
     pythonlogger.log_generation(
         generation_id=gen_id,
-        population_size=len(base_population),
+        population_size=NUM_PROGRAMS,
         crash_rate=crash_rate,
         system_impacts=system_impacts,
         avg_shellcode_length=avg_length,
