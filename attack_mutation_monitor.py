@@ -7,6 +7,71 @@ import math
 
 METRICS_FILE = "kernelhunter_metrics.json"
 
+ATTACK_OPTIONS = [
+    "random_bytes",
+    "syscall_setup",
+    "syscall",
+    "memory_access",
+    "privileged",
+    "arithmetic",
+    "control_flow",
+    "x86_opcode",
+    "simd",
+    "known_vulns",
+    "segment_registers",
+    "speculative_exec",
+    "forced_exception",
+    "control_registers",
+    "stack_manipulation",
+    "full_kernel_syscall",
+    "memory_pressure",
+    "cache_pollution",
+    "control_flow_trap",
+    "deep_rop_chain",
+    "dma_confusion",
+    "entropy_drain",
+    "external_adn",
+    "function_adn",
+    "filesystem_chaos",
+    "gene_bank",
+    "gene_bank_dynamic",
+    "hyper_corruptor",
+    "interrupt_storm",
+    "ipc_stress",
+    "kpti_breaker",
+    "memory_fragmentation",
+    "module_loading_storm",
+    "network_stack_fuzz",
+    "neutral_mutation",
+    "nop_island",
+    "page_fault_flood",
+    "pointer_attack",
+    "privileged_cpu_destruction",
+    "privileged_storm",
+    "resource_starvation",
+    "scheduler_attack",
+    "shadow_corruptor",
+    "smap_smep_bypass",
+    "speculative_confusion",
+    "syscall_reentrancy_storm",
+    "syscall_storm",
+    "syscall_table_stress",
+    "ultimate_panic",
+    "ai_shellcode",
+]
+
+MUTATION_TYPES = [
+    "add",
+    "remove",
+    "modify",
+    "duplicate",
+    "mass_duplicate",
+    "invert",
+    "transpose_nop",
+    "crispr",
+]
+
+
 class AttackMutationMonitor:
     def __init__(self):
         self.metrics = {
@@ -14,6 +79,8 @@ class AttackMutationMonitor:
             "mutation_stats": {},
             "attack_totals": {},
             "mutation_totals": {},
+            "attack_weights": [],
+            "mutation_weights": [],
             "latest_gen": 0,
         }
         self.attack_totals = {}
@@ -56,6 +123,8 @@ class AttackMutationMonitor:
                 self.metrics["mutation_stats"] = data.get("mutation_stats", {})
                 self.metrics["attack_totals"] = data.get("attack_totals", {})
                 self.metrics["mutation_totals"] = data.get("mutation_totals", {})
+                self.metrics["attack_weights"] = data.get("attack_weights_history", [])[-1] if data.get("attack_weights_history") else []
+                self.metrics["mutation_weights"] = data.get("mutation_weights_history", [])[-1] if data.get("mutation_weights_history") else []
                 gens = data.get("generations", [])
                 if gens:
                     self.metrics["latest_gen"] = max(gens)
@@ -96,7 +165,7 @@ class AttackMutationMonitor:
 
         attack_items = sorted(attack.items(), key=lambda x: x[1], reverse=True)
         mut_items = sorted(mut.items(), key=lambda x: x[1], reverse=True)
-        max_rows = height - row - 2
+        max_rows = (height - row - 4) // 2
 
         half_width = width // 2 - 2
         self._draw_items_in_columns(
@@ -114,6 +183,33 @@ class AttackMutationMonitor:
             mut_items,
             half_width,
             max_rows,
+        )
+
+        row += max_rows + 1
+        stdscr.addstr(row, 2, "Attack Weights", curses.A_UNDERLINE)
+        stdscr.addstr(row, width // 2, "Mutation Weights", curses.A_UNDERLINE)
+        row += 1
+
+        attack_w = self.metrics.get("attack_weights", [])
+        mut_w = self.metrics.get("mutation_weights", [])
+        attack_weight_items = list(zip(ATTACK_OPTIONS[: len(attack_w)], attack_w))
+        mut_weight_items = list(zip(MUTATION_TYPES[: len(mut_w)], mut_w))
+
+        self._draw_items_in_columns(
+            stdscr,
+            row,
+            2,
+            attack_weight_items,
+            half_width,
+            height - row - 2,
+        )
+        self._draw_items_in_columns(
+            stdscr,
+            row,
+            width // 2,
+            mut_weight_items,
+            half_width,
+            height - row - 2,
         )
 
         stdscr.addstr(height - 1, 0, "Press 'q' to quit")
