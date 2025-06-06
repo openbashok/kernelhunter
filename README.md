@@ -116,10 +116,12 @@ python kernelHunter.py --use-rl-weights
 ```
 
 When invoked with this flag, KernelHunter starts with the default weights and
-balances them after each execution based on observed crashes.
+uses a sliding window to track recent rewards. Attack and mutation selections
+follow an epsilon-greedy strategy to balance exploration and exploitation. The
+weights are updated according to the observed success rate and a learning rate.
 
-When reinforcement learning is active, updated weights are recorded in
-`kernelhunter_metrics.json` after each execution.
+Updated weights are recorded in `kernelhunter_metrics.json` after each
+generation.
 
 
 
