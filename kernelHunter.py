@@ -194,6 +194,12 @@ if len(mutation_weights) != len(MUTATION_TYPES):
 attack_index = {name: i for i, name in enumerate(ATTACK_OPTIONS)}
 mutation_index = {name: i for i, name in enumerate(MUTATION_TYPES)}
 
+# Q-values and counters for epsilon-greedy bandit
+attack_q_values = [0.0] * len(ATTACK_OPTIONS)
+mutation_q_values = [0.0] * len(MUTATION_TYPES)
+attack_counts = [0] * len(ATTACK_OPTIONS)
+mutation_counts = [0] * len(MUTATION_TYPES)
+
 last_attack_type = None
 last_mutation_type = None
 attack_success = Counter()
@@ -344,10 +350,17 @@ def print_shellcode_hex(shellcode, max_bytes=32, escape_format=True):
             return f"{formatted_start} ... (omitted {len(shellcode) - max_bytes} bytes) ... {formatted_end}"
 
 # Reinforcement learning helpers
-def select_with_epsilon_greedy(options, weights, epsilon=EPSILON):
+def select_with_epsilon_greedy(options, q_values, epsilon=EPSILON):
+    """Select an option using epsilon-greedy strategy with deterministic exploitation."""
     if random.random() < epsilon:
         return random.choice(options)
-    return random.choices(options, weights=weights)[0]
+    best_idx = max(range(len(q_values)), key=lambda i: q_values[i])
+    return options[best_idx]
+
+def update_q_value(q_values, counts, index, reward):
+    """Incrementally update estimated Q-value for a given action."""
+    counts[index] += 1
+    q_values[index] += (reward - q_values[index]) / counts[index]
 
 
 def calculate_reward(crash_info):
@@ -380,8 +393,8 @@ metrics = {
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
-metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
-metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
+metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
+metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
 
 def write_metrics():
     """Persist current metrics to disk"""
@@ -394,44 +407,12 @@ def write_metrics():
         pass
 
 def update_rl_weights():
-    """Adjust weights using recent success rates in a sliding window"""
+    """Record current Q-values for analysis."""
     if not USE_RL_WEIGHTS:
         return
 
-    learning_rate = 0.1
-    baseline_attack = sliding_attack_reward.overall_rate()
-    baseline_mutation = sliding_mutation_reward.overall_rate()
-
-    for name in ATTACK_OPTIONS:
-        idx = attack_index[name]
-        rate = sliding_attack_reward.success_rate(name)
-        if rate > baseline_attack:
-            attack_weights[idx] = max(1, int(attack_weights[idx] * (1 + learning_rate * rate)))
-        else:
-            attack_weights[idx] = max(1, int(attack_weights[idx] * (1 - learning_rate * (1 - rate))))
-
-    for name in MUTATION_TYPES:
-        idx = mutation_index[name]
-        rate = sliding_mutation_reward.success_rate(name)
-        if rate > baseline_mutation:
-            mutation_weights[idx] = max(1, int(mutation_weights[idx] * (1 + learning_rate * rate)))
-        else:
-            mutation_weights[idx] = max(1, int(mutation_weights[idx] * (1 - learning_rate * (1 - rate))))
-
-    total_attack = sum(attack_weights)
-    if total_attack > 0:
-        scale = DEFAULT_ATTACK_WEIGHT_SUM / float(total_attack)
-        for i, w in enumerate(attack_weights):
-            attack_weights[i] = max(1, int(w * scale))
-
-    total_mutation = sum(mutation_weights)
-    if total_mutation > 0:
-        scale = DEFAULT_MUTATION_WEIGHT_SUM / float(total_mutation)
-        for i, w in enumerate(mutation_weights):
-            mutation_weights[i] = max(1, int(w * scale))
-
-    metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
-    metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
+    metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
+    metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
     attack_success.clear()
     mutation_success.clear()
     write_metrics()
@@ -465,7 +446,7 @@ def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
     global last_attack_type
     if USE_RL_WEIGHTS:
-        choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_weights, EPSILON)
+        choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_q_values, EPSILON)
     else:
         choice_type = random.choices(ATTACK_OPTIONS, weights=attack_weights)[0]
     last_attack_type = choice_type
@@ -915,7 +896,7 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
 
     global last_mutation_type
     if USE_RL_WEIGHTS:
-        mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_weights, EPSILON)
+        mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_q_values, EPSILON)
     else:
         mutation_type = random.choices(MUTATION_TYPES, weights=mutation_weights)[0]
     last_mutation_type = mutation_type
@@ -1295,6 +1276,10 @@ def run_generation(gen_id, base_population):
                     log.write(f"Survivor {i:04d}: {shellcode_hex} (len: {len(shellcode)})\n")
                     if i < 2:  # Solo mostrar algunos ejemplos de sobrevivientes para no saturar la salida
                         print(f"Survivor sample {i:04d}: {shellcode_hex}")
+                    if USE_RL_WEIGHTS:
+                        update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], 0)
+                        update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], 0)
+                        update_rl_weights()
                 else:
                     # Determinar si el crash puede haber afectado al sistema
                     is_system_impact = is_system_level_crash(result.returncode, stderr_text)
@@ -1354,10 +1339,14 @@ def run_generation(gen_id, base_population):
                         mutation_success[last_mutation_type] += reward
                         sliding_attack_reward.add_result(last_attack_type, reward)
                         sliding_mutation_reward.add_result(last_mutation_type, reward)
+                        update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], reward)
+                        update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], reward)
                         update_rl_weights()
                 if USE_RL_WEIGHTS and result.returncode == 0:
                     sliding_attack_reward.add_result(last_attack_type, 0)
                     sliding_mutation_reward.add_result(last_mutation_type, 0)
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], 0)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], 0)
 
             # Manejar otros tipos de errores
             except subprocess.TimeoutExpired:
@@ -1377,6 +1366,8 @@ def run_generation(gen_id, base_population):
                     mutation_success[last_mutation_type] += reward
                     sliding_attack_reward.add_result(last_attack_type, reward)
                     sliding_mutation_reward.add_result(last_mutation_type, reward)
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], reward)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], reward)
                     update_rl_weights()
 
             except subprocess.CalledProcessError:
@@ -1394,6 +1385,8 @@ def run_generation(gen_id, base_population):
                     mutation_success[last_mutation_type] += reward
                     sliding_attack_reward.add_result(last_attack_type, reward)
                     sliding_mutation_reward.add_result(last_mutation_type, reward)
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], reward)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], reward)
                     update_rl_weights()
 
     # Asegurar que siempre hay población
@@ -1658,5 +1651,9 @@ if __name__ == "__main__":
         USE_RL_WEIGHTS = True
         attack_weights = DEFAULT_ATTACK_WEIGHTS.copy()
         mutation_weights = DEFAULT_MUTATION_WEIGHTS.copy()
+        attack_q_values = [0.0] * len(ATTACK_OPTIONS)
+        mutation_q_values = [0.0] * len(MUTATION_TYPES)
+        attack_counts = [0] * len(ATTACK_OPTIONS)
+        mutation_counts = [0] * len(MUTATION_TYPES)
 
     main()
