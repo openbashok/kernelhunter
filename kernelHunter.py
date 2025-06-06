@@ -193,7 +193,7 @@ MUTATION_TYPES = [
     "crispr",
 ]
 
-DEFAULT_MUTATION_WEIGHTS = [22, 12, 18, 18, 10, 8, 8, 4]
+DEFAULT_MUTATION_WEIGHTS = [90, 3, 2, 1, 1, 1, 1, 1]
 
 # Totals used to keep weights balanced when reinforcement learning is enabled
 DEFAULT_ATTACK_WEIGHT_SUM = sum(DEFAULT_ATTACK_WEIGHTS)
