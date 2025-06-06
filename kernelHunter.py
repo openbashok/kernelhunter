@@ -1199,17 +1199,10 @@ def compile_and_execute_worker(data):
     bin_path = data["bin_path"]
     timeout = data["timeout"]
     try:
-        subprocess.run(
-            ["clang", c_path, "-o", bin_path],
-            check=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError as e:
-        return {
-            "status": "COMPILE_ERROR",
-            "result": None,
-            "stderr": e.stderr.decode(),
-        }
+        subprocess.run(["clang", c_path, "-o", bin_path], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        return {"status": "COMPILE_ERROR", "result": None}
 
     try:
         result = subprocess.run([bin_path], timeout=timeout, capture_output=True)
@@ -1262,24 +1255,7 @@ async def process_single_program_async(executor, program_id, parent_shellcode, g
                 "parent": parent_shellcode,
             }
     else:
-        crash_info = {
-            "crash_type": res["status"],
-            "return_code": None,
-            "stderr": res.get("stderr", ""),
-            "parent": parent_shellcode,
-        }
-        if res["status"] == "COMPILE_ERROR":
-            save_crash_info(
-                gen_id,
-                program_id,
-                shellcode,
-                "COMPILE_ERROR",
-                res.get("stderr", ""),
-                "",
-                None,
-                False,
-                parent_shellcode,
-            )
+        crash_info = {"crash_type": res["status"], "return_code": None}
 
     return {
         "program_id": program_id,
