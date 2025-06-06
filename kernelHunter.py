@@ -65,6 +65,21 @@ from transposition_mutation_nop import transpose_fragment_nop_aware
 from ultimate_kernel_panic_generator import generate_ultimate_panic_fragment
 from ai_shellcode_mutation import generate_ai_shellcode_fragment
 
+# Simple ANSI color helpers for terminal output
+ANSI_COLORS = {
+    "red": "\033[31m",
+    "green": "\033[32m",
+    "yellow": "\033[33m",
+    "cyan": "\033[36m",
+    "magenta": "\033[35m",
+    "reset": "\033[0m",
+}
+
+
+def color_text(text, color):
+    """Return text wrapped in ANSI color codes."""
+    return f"{ANSI_COLORS.get(color, '')}{text}{ANSI_COLORS['reset'] if color else ''}"
+
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
 
@@ -1566,7 +1581,7 @@ def run_generation(gen_id, base_population):
                     shellcode_hex = print_shellcode_hex(shellcode, escape_format=True)
                     log.write(f"Survivor {i:04d}: {shellcode_hex} (len: {len(shellcode)})\n")
                     if i < 2:  # Solo mostrar algunos ejemplos de sobrevivientes para no saturar la salida
-                        print(f"Survivor sample {i:04d}: {shellcode_hex}")
+                        print(color_text(f"Survivor sample {i:04d}: {shellcode_hex}", "green"))
                     if USE_RL_WEIGHTS:
                         update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], 0)
                         update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], 0)
@@ -1608,7 +1623,10 @@ def run_generation(gen_id, base_population):
                         }
                         genetic_reservoir.add(parent, crash_info)  # Save the parent, not the crashed shellcode
 
-                    print(msg)
+                    if is_system_impact:
+                        print(color_text(msg, "magenta"))
+                    else:
+                        print(color_text(msg, "red"))
                     crash_log.write(msg + "\n")
 
                     # Guardar el código fuente y la información del crash
@@ -1644,7 +1662,7 @@ def run_generation(gen_id, base_population):
                 crash_type = "TIMEOUT"
                 shellcode_hex = print_shellcode_hex(shellcode, escape_format=True)
                 msg = f"Crash {i:04d}: TIMEOUT | Shellcode: {shellcode_hex}"
-                print(msg)
+                print(color_text(msg, "red"))
                 crash_log.write(msg + "\n")
                 with open(f"kernelhunter_crashes/gen{gen_id:04d}_prog{i:04d}.c", "w") as fc:
                     fc.write(stub)
@@ -1665,7 +1683,7 @@ def run_generation(gen_id, base_population):
                 crash_type = "COMPILE_ERROR"
                 shellcode_hex = print_shellcode_hex(shellcode, escape_format=True)
                 msg = f"Crash {i:04d}: COMPILATION ERROR | Shellcode: {shellcode_hex}"
-                print(msg)
+                print(color_text(msg, "red"))
                 crash_log.write(msg + "\n")
                 crashes += 1
                 crash_types_counter[crash_type] += 1
@@ -1683,7 +1701,7 @@ def run_generation(gen_id, base_population):
     # Asegurar que siempre hay población
     if not new_population:
         # Si todos crashearon, reiniciar con la población base pero con algunos modificados
-        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        print(color_text(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.", "yellow"))
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
@@ -1696,8 +1714,8 @@ def run_generation(gen_id, base_population):
 
 
 
-    print(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}")
-    print(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}")
+    print(color_text(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}", "cyan"))
+    print(color_text(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}", "cyan"))
 
     # Actualizar métricas
     metrics["generations"].append(gen_id)
@@ -1750,8 +1768,8 @@ def run_generation(gen_id, base_population):
 
         # Si hay individuos estancados, reemplazarlos
         if len(stagnant_individuals) > 0:
-            print(f"[GEN {gen_id}] ¡ALERTA! {len(stagnant_individuals)} individuos estancados identificados.")
-            print(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.")
+            print(color_text(f"[GEN {gen_id}] ¡ALERTA! {len(stagnant_individuals)} individuos estancados identificados.", "yellow"))
+            print(color_text(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.", "yellow"))
 
             # Iniciar con los individuos no estancados
             new_population = non_stagnant.copy()
@@ -1786,7 +1804,7 @@ def run_generation(gen_id, base_population):
                 new_population.append(aggressive_shellcode)
 
                 # Mostrar información sobre el nuevo shellcode
-                print(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}")
+                print(color_text(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}", "green"))
 
             # Limpiar contadores antiguos para ahorrar memoria
             if len(individual_zero_crash_counts) > 1000:  # Límite arbitrario
@@ -1801,7 +1819,7 @@ def run_generation(gen_id, base_population):
 
     # Si no hay población (todos crashearon), reiniciar con población base
     if not new_population:
-        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        print(color_text(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.", "yellow"))
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
@@ -1853,7 +1871,7 @@ async def run_generation_parallel(gen_id, base_population):
             try:
                 results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=30)
             except asyncio.TimeoutError:
-                print(f"[GEN {gen_id}] Generación superó tiempo límite")
+                print(color_text(f"[GEN {gen_id}] Generación superó tiempo límite", "red"))
                 for t in tasks:
                     t.cancel()
                 results = []
@@ -1872,7 +1890,7 @@ async def run_generation_parallel(gen_id, base_population):
                 shellcode_hex = print_shellcode_hex(shellcode, escape_format=True)
                 log.write(f"Survivor {res['program_id']:04d}: {shellcode_hex} (len: {len(shellcode)})\n")
                 if res["program_id"] < 2:
-                    print(f"Survivor sample {res['program_id']:04d}: {shellcode_hex}")
+                    print(color_text(f"Survivor sample {res['program_id']:04d}: {shellcode_hex}", "green"))
                 if USE_RL_WEIGHTS:
                     update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], 0)
                     update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], 0)
@@ -1892,7 +1910,10 @@ async def run_generation_parallel(gen_id, base_population):
                 if is_system_impact:
                     msg = f"[SYSTEM IMPACT] {msg}"
                 crash_types_counter[crash_type] += 1
-                print(msg)
+                if is_system_impact:
+                    print(color_text(msg, "magenta"))
+                else:
+                    print(color_text(msg, "red"))
                 crash_log.write(msg + "\n")
                 with open(f"kernelhunter_crashes/gen{gen_id:04d}_prog{res['program_id']:04d}.c", "w") as fc:
                     fc.write(res["stub"])
@@ -1910,7 +1931,7 @@ async def run_generation_parallel(gen_id, base_population):
             else:
                 crash_types_counter[crash_type] += 1
                 msg = f"Crash {res['program_id']:04d}: {crash_type} | Shellcode: {print_shellcode_hex(shellcode, escape_format=True)}"
-                print(msg)
+                print(color_text(msg, "red"))
                 crash_log.write(msg + "\n")
                 with open(f"kernelhunter_crashes/gen{gen_id:04d}_prog{res['program_id']:04d}.c", "w") as fc:
                     fc.write(res["stub"])
@@ -1926,7 +1947,7 @@ async def run_generation_parallel(gen_id, base_population):
                     update_rl_weights()
 
     if not new_population:
-        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        print(color_text(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.", "yellow"))
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
@@ -1936,8 +1957,8 @@ async def run_generation_parallel(gen_id, base_population):
     crash_rate = crashes / NUM_PROGRAMS
     avg_length = sum(shellcode_lengths) / len(shellcode_lengths) if shellcode_lengths else 0
 
-    print(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}")
-    print(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}")
+    print(color_text(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}", "cyan"))
+    print(color_text(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}", "cyan"))
 
     metrics["generations"].append(gen_id)
     metrics["crash_rates"].append(crash_rate)
@@ -1975,8 +1996,8 @@ async def run_generation_parallel(gen_id, base_population):
             else:
                 non_stagnant.append(shellcode)
         if len(stagnant_individuals) > 0:
-            print(f"[GEN {gen_id}] ¡ALERTA! {len(stagnant_individuals)} individuos estancados identificados.")
-            print(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.")
+            print(color_text(f"[GEN {gen_id}] ¡ALERTA! {len(stagnant_individuals)} individuos estancados identificados.", "yellow"))
+            print(color_text(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.", "yellow"))
             new_population = non_stagnant.copy()
             for _ in range(len(stagnant_individuals)):
                 aggressive_shellcode = b""
@@ -1995,7 +2016,7 @@ async def run_generation_parallel(gen_id, base_population):
                 if random.random() < 0.5:
                     aggressive_shellcode += EXIT_SYSCALL
                 new_population.append(aggressive_shellcode)
-                print(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}")
+                print(color_text(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}", "green"))
             if len(individual_zero_crash_counts) > 1000:
                 individual_zero_crash_counts = {k: v for k, v in individual_zero_crash_counts.items() if v >= MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS // 2}
     elif crash_rate > 0:
@@ -2005,7 +2026,7 @@ async def run_generation_parallel(gen_id, base_population):
                 individual_zero_crash_counts[shellcode_id] = 0
 
     if not new_population:
-        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        print(color_text(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.", "yellow"))
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
@@ -2020,10 +2041,10 @@ def analyze_crash_files():
     crash_files = [f for f in os.listdir(crash_dir) if f.endswith(".json")]
 
     if not crash_files:
-        print("No se encontraron crashes críticos para analizar.")
+        print(color_text("No se encontraron crashes críticos para analizar.", "yellow"))
         return
 
-    print(f"\nAnalizando {len(crash_files)} crashes con potencial impacto a nivel de sistema...")
+    print(color_text(f"\nAnalizando {len(crash_files)} crashes con potencial impacto a nivel de sistema...", "cyan"))
 
     # Análisis básico de patrones
     crash_signals = Counter()
@@ -2049,21 +2070,21 @@ def analyze_crash_files():
 
     avg_length = avg_length / len(crash_files) if crash_files else 0
 
-    print(f"\nResumen de análisis:")
-    print(f"- Promedio de longitud de shellcode: {avg_length:.1f} bytes")
-    print(f"- Señales más comunes: {dict(crash_signals.most_common(3))}")
+    print(color_text("\nResumen de análisis:", "cyan"))
+    print(color_text(f"- Promedio de longitud de shellcode: {avg_length:.1f} bytes", "cyan"))
+    print(color_text(f"- Señales más comunes: {dict(crash_signals.most_common(3))}", "cyan"))
 
     if shellcode_segments:
-        print(f"- Segmentos de shellcode más comunes:")
+        print(color_text(f"- Segmentos de shellcode más comunes:", "cyan"))
         for segment, count in shellcode_segments.most_common(5):
             if count > 1:
                 # Convertir a formato \x01\x02
                 hex_bytes = bytes.fromhex(segment)
                 escaped_format = ''.join(f'\\x{b:02x}' for b in hex_bytes)
-                print(f"  {escaped_format}: {count} apariciones")
+                print(color_text(f"  {escaped_format}: {count} apariciones", "cyan"))
 
         # Intentar decodificar los segmentos más comunes
-        print("\n- Interpretación de segmentos comunes:")
+        print(color_text("\n- Interpretación de segmentos comunes:", "cyan"))
         for segment, count in shellcode_segments.most_common(3):
             if count > 1:
                 try:
@@ -2072,7 +2093,7 @@ def analyze_crash_files():
                     # Intentar desensamblar
                     interpretation = interpret_instruction(segment_bytes)
                     escaped_format = ''.join(f'\\x{b:02x}' for b in segment_bytes)
-                    print(f"  {escaped_format}: Posiblemente '{interpretation}'")
+                    print(color_text(f"  {escaped_format}: Posiblemente '{interpretation}'", "cyan"))
                 except Exception as e:
                     pass
 
@@ -2107,31 +2128,31 @@ async def main_async():
         
         # Add these samples to the initial population
         population.extend(samples)
-        print(f"Added {len(samples)} diverse individuals from reservoir to initial population")
+        print(color_text(f"Added {len(samples)} diverse individuals from reservoir to initial population", "green"))
 
     try:
         for gen in range(MAX_GENERATIONS):
-            print(f"\nGeneración {gen}/{MAX_GENERATIONS} (población: {len(population)})")
+            print(color_text(f"\nGeneración {gen}/{MAX_GENERATIONS} (población: {len(population)})", "cyan"))
             population = await run_generation_parallel(gen, population)
 
     except KeyboardInterrupt:
-        print("\n\nProceso interrumpido por el usuario.")
+        print(color_text("\n\nProceso interrumpido por el usuario.", "red"))
 
     finally:
-        print("\nGuardando métricas finales...")
+        print(color_text("\nGuardando métricas finales...", "cyan"))
         write_metrics()
 
-        print("\nEvolución completada.")
+        print(color_text("\nEvolución completada.", "green"))
         analyze_crash_files()
 
-        print("\nResumen final:")
-        print(f"- Total de generaciones: {len(metrics['generations'])}")
+        print(color_text("\nResumen final:", "cyan"))
+        print(color_text(f"- Total de generaciones: {len(metrics['generations'])}", "cyan"))
         if metrics['system_impacts']:
             total_impacts = sum(metrics['system_impacts'])
-            print(f"- Total de impactos potenciales al sistema: {total_impacts}")
-            print(f"- Directorio de crashes críticos: kernelhunter_critical/")
+            print(color_text(f"- Total de impactos potenciales al sistema: {total_impacts}", "magenta"))
+            print(color_text(f"- Directorio de crashes críticos: kernelhunter_critical/", "magenta"))
 
-        print("\nKernelHunter ha completado su ejecución.")
+        print(color_text("\nKernelHunter ha completado su ejecución.", "green"))
 
 def main():
     asyncio.run(main_async())
