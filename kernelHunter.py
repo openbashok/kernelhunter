@@ -181,7 +181,11 @@ DEFAULT_MUTATION_WEIGHT_SUM = sum(DEFAULT_MUTATION_WEIGHTS)
 MAX_REWARD = 15
 
 # Exploration factor for epsilon-greedy selection
-EPSILON = 0.1
+def get_epsilon(generation):
+    if generation < 20:
+        return 0.3
+    else:
+        return max(0.05, 0.3 * (0.95 ** (generation - 20)))
 
 attack_weights = cfg.get("attack_weights") or DEFAULT_ATTACK_WEIGHTS.copy()
 if len(attack_weights) != len(ATTACK_OPTIONS):
@@ -195,8 +199,14 @@ attack_index = {name: i for i, name in enumerate(ATTACK_OPTIONS)}
 mutation_index = {name: i for i, name in enumerate(MUTATION_TYPES)}
 
 # Q-values and counters for epsilon-greedy bandit
-attack_q_values = [0.0] * len(ATTACK_OPTIONS)
-mutation_q_values = [0.0] * len(MUTATION_TYPES)
+def initialize_bandit_values():
+    """Random optimistic initialization to prevent premature convergence."""
+    import random
+    attack_values = [random.uniform(5.0, 8.0) for _ in ATTACK_OPTIONS]
+    mutation_values = [random.uniform(4.0, 7.0) for _ in MUTATION_TYPES]
+    return attack_values, mutation_values
+
+attack_q_values, mutation_q_values = initialize_bandit_values()
 attack_counts = [0] * len(ATTACK_OPTIONS)
 mutation_counts = [0] * len(MUTATION_TYPES)
 
@@ -204,6 +214,7 @@ last_attack_type = None
 last_mutation_type = None
 attack_success = Counter()
 mutation_success = Counter()
+current_generation = 0
 
 # Sliding window trackers for reinforcement learning rewards
 class SlidingWindowReward:
@@ -350,7 +361,7 @@ def print_shellcode_hex(shellcode, max_bytes=32, escape_format=True):
             return f"{formatted_start} ... (omitted {len(shellcode) - max_bytes} bytes) ... {formatted_end}"
 
 # Reinforcement learning helpers
-def select_with_epsilon_greedy(options, q_values, epsilon=EPSILON):
+def select_with_epsilon_greedy(options, q_values, epsilon=0.1):
     """Select an option using epsilon-greedy strategy with deterministic exploitation."""
     if random.random() < epsilon:
         return random.choice(options)
@@ -446,7 +457,8 @@ def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
     global last_attack_type
     if USE_RL_WEIGHTS:
-        choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_q_values, EPSILON)
+        current_epsilon = get_epsilon(current_generation)
+        choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_q_values, current_epsilon)
     else:
         choice_type = random.choices(ATTACK_OPTIONS, weights=attack_weights)[0]
     last_attack_type = choice_type
@@ -896,7 +908,8 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
 
     global last_mutation_type
     if USE_RL_WEIGHTS:
-        mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_q_values, EPSILON)
+        current_epsilon = get_epsilon(current_generation)
+        mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_q_values, current_epsilon)
     else:
         mutation_type = random.choices(MUTATION_TYPES, weights=mutation_weights)[0]
     last_mutation_type = mutation_type
@@ -1011,7 +1024,8 @@ def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, retu
 def run_generation(gen_id, base_population):
     """Ejecuta una generación completa del algoritmo evolutivo"""
     global individual_zero_crash_counts, attack_counter, mutation_counter
-    global attack_success, mutation_success
+    global attack_success, mutation_success, current_generation
+    current_generation = gen_id
 
     # Reset counters for this generation
     attack_counter.clear()
@@ -1651,8 +1665,7 @@ if __name__ == "__main__":
         USE_RL_WEIGHTS = True
         attack_weights = DEFAULT_ATTACK_WEIGHTS.copy()
         mutation_weights = DEFAULT_MUTATION_WEIGHTS.copy()
-        attack_q_values = [0.0] * len(ATTACK_OPTIONS)
-        mutation_q_values = [0.0] * len(MUTATION_TYPES)
+        attack_q_values, mutation_q_values = initialize_bandit_values()
         attack_counts = [0] * len(ATTACK_OPTIONS)
         mutation_counts = [0] * len(MUTATION_TYPES)
 
