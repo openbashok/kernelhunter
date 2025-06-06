@@ -12,6 +12,9 @@ import time
 import signal
 import sys
 import json
+import asyncio
+import concurrent.futures
+import multiprocessing
 from random import randint, choice
 from collections import Counter, defaultdict, deque
 from genetic_reservoir import GeneticReservoir
@@ -997,6 +1000,273 @@ def is_system_level_crash(return_code, stderr):
 
     return False
 
+def generate_c_stub(shellcode_c):
+    """Return the modular C stub used to execute the shellcode"""
+    return f"""
+            #include <stdio.h>
+            #include <stdlib.h>
+            #include <sys/mman.h>
+            #include <string.h>
+            #include <unistd.h>
+            #include <sys/socket.h>
+            #include <netinet/in.h>
+            #include <arpa/inet.h>
+
+            #define FUNC_SOCKET    500
+            #define FUNC_CONNECT   501
+            #define FUNC_LISTEN    502
+            #define FUNC_SEND      503
+            #define FUNC_RECV      504
+            #define FUNC_EXECUTE   505
+
+            unsigned char code[] = {{{shellcode_c}}};
+
+            // Estructura para almacenar información de conexión
+            struct connection_info {{
+                int sockfd;
+                struct sockaddr_in addr;
+                int is_connected;
+            }} conn_info = {{-1, {{0}}, 0}};
+
+            int open_socket() {{
+                int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+                if (sockfd >= 0) {{
+                    write(1, "[+] Socket opened\n", 18);
+                    conn_info.sockfd = sockfd;
+                }} else {{
+                    write(1, "[-] Failed to open socket\n", 26);
+                }}
+                return sockfd;
+            }}
+
+            int connect_socket(const char *ip, int port) {{
+                if (conn_info.sockfd < 0) {{
+                    write(1, "[-] No socket available\n", 24);
+                    return -1;
+                }}
+
+                conn_info.addr.sin_family = AF_INET;
+                conn_info.addr.sin_port = htons(port);
+                conn_info.addr.sin_addr.s_addr = inet_addr(ip);
+
+                if (connect(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) == 0) {{
+                    write(1, "[+] Connected\n", 14);
+                    conn_info.is_connected = 1;
+                    return 0;
+                }} else {{
+                    write(1, "[-] Connection failed\n", 22);
+                    return -1;
+                }}
+            }}
+
+            int listen_socket(int port) {{
+                if (conn_info.sockfd < 0) {{
+                    write(1, "[-] No socket available\n", 24);
+                    return -1;
+                }}
+
+                conn_info.addr.sin_family = AF_INET;
+                conn_info.addr.sin_port = htons(port);
+                conn_info.addr.sin_addr.s_addr = INADDR_ANY;
+
+                if (bind(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) < 0) {{
+                    write(1, "[-] Bind failed\n", 16);
+                    return -1;
+                }}
+
+                if (listen(conn_info.sockfd, 5) < 0) {{
+                    write(1, "[-] Listen failed\n", 18);
+                    return -1;
+                }}
+
+                write(1, "[+] Listening\n", 14);
+                return 0;
+            }}
+
+            int send_data(const char *data, size_t len) {{
+                if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
+                    write(1, "[-] Not connected\n", 18);
+                    return -1;
+                }}
+
+                ssize_t bytes_sent = send(conn_info.sockfd, data, len, 0);
+                if (bytes_sent > 0) {{
+                    write(1, "[+] Data sent\n", 14);
+                }} else {{
+                    write(1, "[-] Send failed\n", 16);
+                }}
+                return bytes_sent;
+            }}
+
+            int recv_data(char *buffer, size_t len) {{
+                if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
+                    write(1, "[-] Not connected\n", 18);
+                    return -1;
+                }}
+
+                ssize_t bytes_recv = recv(conn_info.sockfd, buffer, len, 0);
+                if (bytes_recv > 0) {{
+                    write(1, "[+] Data received\n", 18);
+                }} else {{
+                    write(1, "[-] Receive failed\n", 19);
+                }}
+                return bytes_recv;
+            }}
+
+            void execute_payload(const char *payload, size_t len) {{
+                void *mem = mmap(0, len, PROT_READ | PROT_WRITE | PROT_EXEC,
+                                MAP_ANON | MAP_PRIVATE, -1, 0);
+                if (mem == MAP_FAILED) {{
+                    write(1, "[-] Memory allocation failed\n", 29);
+                    return;
+                }}
+
+                memcpy(mem, payload, len);
+                write(1, "[+] Executing payload\n", 22);
+                ((void(*)())mem)();
+                munmap(mem, len);
+            }}
+
+            void dispatch(int action) {{
+                switch (action) {{
+                    case FUNC_SOCKET:
+                        open_socket();
+                        break;
+                    case FUNC_CONNECT:
+                        write(1, "[*] Connecting to 127.0.0.1:4444\n", 33);
+                        connect_socket("127.0.0.1", 4444);
+                        break;
+                    case FUNC_LISTEN:
+                        write(1, "[*] Listening on port 4444\n", 27);
+                        listen_socket(4444);
+                        break;
+                    case FUNC_SEND:
+                        write(1, "[*] Sending data...\n", 20);
+                        send_data("Hello from stub\n", 16);
+                        break;
+                    case FUNC_RECV: {{
+                        write(1, "[*] Receiving data...\n", 22);
+                        char buffer[1024];
+                        recv_data(buffer, sizeof(buffer));
+                        break;
+                    }}
+                    case FUNC_EXECUTE:
+                        write(1, "[*] Executing payload...\n", 25);
+                        execute_payload((char *)code, sizeof(code));
+                        break;
+                    default:
+                        write(1, "[-] Unknown action.\n", 21);
+                        break;
+                }}
+            }}
+
+            int main() {{
+                setbuf(stdout, NULL);
+                setbuf(stderr, NULL);
+
+                void *exec = mmap(0, sizeof(code), PROT_READ | PROT_WRITE | PROT_EXEC,
+                                MAP_ANON | MAP_PRIVATE, -1, 0);
+
+                if (exec == MAP_FAILED) {{
+                    perror("mmap");
+                    return 1;
+                }}
+
+                memcpy(exec, code, sizeof(code));
+
+                // Ejecutar el shellcode
+                ((void(*)())exec)();
+
+                // El shellcode establece rdi = 500, verificar si necesitamos dispatch
+                register int action asm("rdi");
+                if (action >= 500) {{
+                    dispatch(action);
+                }}
+
+                // Limpiar recursos
+                if (conn_info.sockfd >= 0) {{
+                    close(conn_info.sockfd);
+                }}
+                munmap(exec, sizeof(code));
+
+                return 0;
+            }}
+            """
+
+def compile_and_execute_worker(data):
+    """Compile the C program and execute the resulting binary."""
+    c_path = data["c_path"]
+    bin_path = data["bin_path"]
+    timeout = data["timeout"]
+    try:
+        subprocess.run(["clang", c_path, "-o", bin_path], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        return {"status": "COMPILE_ERROR", "result": None}
+
+    try:
+        result = subprocess.run([bin_path], timeout=timeout, capture_output=True)
+        return {"status": "OK", "result": result}
+    except subprocess.TimeoutExpired:
+        return {"status": "TIMEOUT", "result": None}
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e), "result": None}
+
+async def process_single_program_async(executor, program_id, parent_shellcode, gen_id, gen_path):
+    """Procesa un programa individual de forma asíncrona"""
+    shellcode = mutate_shellcode(parent_shellcode)
+    shellcode_c = format_shellcode_c_array(shellcode)
+    stub = generate_c_stub(shellcode_c)
+
+    c_path = os.path.join(gen_path, f"g{gen_id:04d}_p{program_id:04d}.c")
+    bin_path = os.path.join(gen_path, f"g{gen_id:04d}_p{program_id:04d}")
+
+    with open(c_path, "w") as f:
+        f.write(stub)
+
+    loop = asyncio.get_running_loop()
+    res = await loop.run_in_executor(executor, compile_and_execute_worker,
+                                     {"c_path": c_path, "bin_path": bin_path, "timeout": TIMEOUT})
+
+    survived = False
+    crash_info = None
+    result_obj = res.get("result")
+    if res["status"] == "OK":
+        survived = result_obj.returncode == 0
+        if not survived:
+            stderr_text = result_obj.stderr.decode('utf-8', errors='replace')
+            stdout_text = result_obj.stdout.decode('utf-8', errors='replace')
+            is_system = is_system_level_crash(result_obj.returncode, stderr_text)
+            if result_obj.returncode < 0:
+                sig_value = -result_obj.returncode
+                try:
+                    sig_name = signal.Signals(sig_value).name
+                except ValueError:
+                    sig_name = f"UNKNOWN_{sig_value}"
+                crash_type = f"SIGNAL_{sig_name}"
+            else:
+                crash_type = f"EXIT_{result_obj.returncode}"
+            crash_info = {
+                "crash_type": crash_type,
+                "return_code": result_obj.returncode,
+                "stderr": stderr_text,
+                "stdout": stdout_text,
+                "system_impact": is_system,
+                "parent": parent_shellcode,
+            }
+    else:
+        crash_info = {"crash_type": res["status"], "return_code": None}
+
+    return {
+        "program_id": program_id,
+        "shellcode": shellcode,
+        "result": result_obj if res["status"] == "OK" else res["status"],
+        "crash_info": crash_info,
+        "survived": survived,
+        "stub": stub,
+    }
+
+
 #def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, return_code, is_system_impact):
 def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, return_code, is_system_impact, parent_shellcode=None):    
     """Guarda información detallada del crash para análisis posterior"""
@@ -1534,6 +1804,211 @@ def run_generation(gen_id, base_population):
 
     return new_population
 
+async def run_generation_parallel(gen_id, base_population):
+    """Versión paralela de run_generation usando asyncio y ProcessPoolExecutor"""
+    global individual_zero_crash_counts, attack_counter, mutation_counter
+    global attack_success, mutation_success, current_generation
+    current_generation = gen_id
+
+    attack_counter.clear()
+    mutation_counter.clear()
+    attack_success.clear()
+    mutation_success.clear()
+
+    gen_path = os.path.join(OUTPUT_DIR, f"gen_{gen_id:04d}")
+    os.makedirs(gen_path, exist_ok=True)
+
+    new_population = []
+    crashes = 0
+    crash_types_counter = Counter()
+    system_impacts = 0
+    shellcode_lengths = []
+
+    with open(LOG_FILE, "a") as log, open(CRASH_LOG, "a") as crash_log:
+        log.write(f"\n[GEN {gen_id}] {'='*50}\n")
+        crash_log.write(f"\n[GEN {gen_id}] {'='*50}\n")
+
+        max_workers = min(multiprocessing.cpu_count(), NUM_PROGRAMS)
+        loop = asyncio.get_running_loop()
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+            tasks = []
+            for i in range(NUM_PROGRAMS):
+                if i % 5 == 0:
+                    print(f"Generando individuos {i}/{NUM_PROGRAMS}", end="\r")
+
+                if random.random() < 0.2 and len(base_population) > 1:
+                    sorted_by_len = sorted(base_population, key=len, reverse=True)
+                    parent = sorted_by_len[randint(0, min(5, len(sorted_by_len)-1))]
+                else:
+                    parent = choice(base_population)
+
+                tasks.append(process_single_program_async(executor, i, parent, gen_id, gen_path))
+
+            try:
+                results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=30)
+            except asyncio.TimeoutError:
+                print(f"[GEN {gen_id}] Generación superó tiempo límite")
+                for t in tasks:
+                    t.cancel()
+                results = []
+                for t in tasks:
+                    try:
+                        results.append(await t)
+                    except Exception:
+                        pass
+
+        for res in results:
+            shellcode = res["shellcode"]
+            shellcode_lengths.append(len(shellcode))
+
+            if res["survived"]:
+                new_population.append(shellcode)
+                shellcode_hex = print_shellcode_hex(shellcode, escape_format=True)
+                log.write(f"Survivor {res['program_id']:04d}: {shellcode_hex} (len: {len(shellcode)})\n")
+                if res["program_id"] < 2:
+                    print(f"Survivor sample {res['program_id']:04d}: {shellcode_hex}")
+                if USE_RL_WEIGHTS:
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], 0)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], 0)
+                    update_rl_weights()
+                continue
+
+            crash_info = res.get("crash_info") or {}
+            crash_type = crash_info.get("crash_type", "UNKNOWN")
+            if crash_type not in ("TIMEOUT", "COMPILE_ERROR") and res["result"] != "TIMEOUT" and res["result"] != "COMPILE_ERROR":
+                stderr_text = crash_info.get("stderr", "")
+                stdout_text = crash_info.get("stdout", "")
+                is_system_impact = crash_info.get("system_impact", False)
+                if is_system_impact:
+                    system_impacts += 1
+                    genetic_reservoir.add(crash_info.get("parent"), crash_info)
+                msg = f"Crash {res['program_id']:04d}: {crash_type} | Shellcode: {print_shellcode_hex(shellcode, escape_format=True)}"
+                if is_system_impact:
+                    msg = f"[SYSTEM IMPACT] {msg}"
+                crash_types_counter[crash_type] += 1
+                print(msg)
+                crash_log.write(msg + "\n")
+                with open(f"kernelhunter_crashes/gen{gen_id:04d}_prog{res['program_id']:04d}.c", "w") as fc:
+                    fc.write(res["stub"])
+                save_crash_info(gen_id, res['program_id'], shellcode, crash_type, stderr_text, stdout_text, crash_info.get("return_code"), is_system_impact, crash_info.get("parent"))
+                crashes += 1
+                if USE_RL_WEIGHTS:
+                    reward = calculate_reward(crash_info)
+                    attack_success[last_attack_type] += reward
+                    mutation_success[last_mutation_type] += reward
+                    sliding_attack_reward.add_result(last_attack_type, reward)
+                    sliding_mutation_reward.add_result(last_mutation_type, reward)
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], reward)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], reward)
+                    update_rl_weights()
+            else:
+                crash_types_counter[crash_type] += 1
+                msg = f"Crash {res['program_id']:04d}: {crash_type} | Shellcode: {print_shellcode_hex(shellcode, escape_format=True)}"
+                print(msg)
+                crash_log.write(msg + "\n")
+                with open(f"kernelhunter_crashes/gen{gen_id:04d}_prog{res['program_id']:04d}.c", "w") as fc:
+                    fc.write(res["stub"])
+                crashes += 1
+                if USE_RL_WEIGHTS:
+                    reward = calculate_reward({"crash_type": crash_type, "system_impact": False})
+                    attack_success[last_attack_type] += reward
+                    mutation_success[last_mutation_type] += reward
+                    sliding_attack_reward.add_result(last_attack_type, reward)
+                    sliding_mutation_reward.add_result(last_mutation_type, reward)
+                    update_q_value(attack_q_values, attack_counts, attack_index[last_attack_type], reward)
+                    update_q_value(mutation_q_values, mutation_counts, mutation_index[last_mutation_type], reward)
+                    update_rl_weights()
+
+    if not new_population:
+        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
+        for _ in range(min(5, len(base_population))):
+            parent = choice(base_population)
+            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
+            new_population.append(simplified)
+
+    crash_rate = crashes / NUM_PROGRAMS
+    avg_length = sum(shellcode_lengths) / len(shellcode_lengths) if shellcode_lengths else 0
+
+    print(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}")
+    print(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}")
+
+    metrics["generations"].append(gen_id)
+    metrics["crash_rates"].append(crash_rate)
+    metrics["system_impacts"].append(system_impacts)
+    metrics["shellcode_lengths"].append(avg_length)
+    metrics["crash_types"][gen_id] = dict(crash_types_counter)
+    metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
+    metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
+    write_metrics()
+
+    if USE_RL_WEIGHTS:
+        update_rl_weights()
+
+    if gen_id % CHECKPOINT_INTERVAL == 0:
+        with open(METRICS_FILE, "w") as f:
+            json.dump(metrics, f, indent=2)
+
+    if crash_rate < 0.05 and len(genetic_reservoir) >= 5:
+        reservoir_samples = genetic_reservoir.get_diverse_sample(n=5)
+        for sample in reservoir_samples:
+            new_population.append(mutate_shellcode(sample))
+
+    if gen_id % 10 == 0:
+        genetic_reservoir.save_to_file(get_reservoir_file())
+
+    if crash_rate == 0 and gen_id > 0:
+        stagnant_individuals = []
+        non_stagnant = []
+        for shellcode in base_population:
+            shellcode_id = shellcode.hex()[:20]
+            if shellcode_id not in individual_zero_crash_counts:
+                individual_zero_crash_counts[shellcode_id] = 0
+            individual_zero_crash_counts[shellcode_id] += 1
+            if individual_zero_crash_counts[shellcode_id] >= MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS:
+                stagnant_individuals.append(shellcode)
+            else:
+                non_stagnant.append(shellcode)
+        if len(stagnant_individuals) > 0:
+            print(f"[GEN {gen_id}] ¡ALERTA! {len(stagnant_individuals)} individuos estancados identificados.")
+            print(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.")
+            new_population = non_stagnant.copy()
+            for _ in range(len(stagnant_individuals)):
+                aggressive_shellcode = b""
+                for _ in range(randint(5, 15)):
+                    instr_type = random.choices(["syscall", "memory_access", "privileged", "random_bytes"], weights=[40, 30, 20, 10])[0]
+                    if instr_type == "syscall":
+                        syscall_num = randint(0, 255)
+                        aggressive_shellcode += SYSCALL_SETUP[0] + bytes([syscall_num, 0, 0, 0])
+                        aggressive_shellcode += SYSCALL_PATTERN
+                    elif instr_type == "memory_access":
+                        aggressive_shellcode += b"\x48\x8b" + bytes([randint(0,255), randint(0,255)])
+                    elif instr_type == "privileged":
+                        aggressive_shellcode += b"\x0f\x01" + bytes([randint(0,255)])
+                    else:
+                        aggressive_shellcode += bytes([randint(0, 255) for _ in range(randint(1,4))])
+                if random.random() < 0.5:
+                    aggressive_shellcode += EXIT_SYSCALL
+                new_population.append(aggressive_shellcode)
+                print(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}")
+            if len(individual_zero_crash_counts) > 1000:
+                individual_zero_crash_counts = {k: v for k, v in individual_zero_crash_counts.items() if v >= MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS // 2}
+    elif crash_rate > 0:
+        for shellcode in base_population:
+            shellcode_id = shellcode.hex()[:20]
+            if shellcode_id in individual_zero_crash_counts:
+                individual_zero_crash_counts[shellcode_id] = 0
+
+    if not new_population:
+        print(f"[GEN {gen_id}] Todos crashearon. Reiniciando población.")
+        new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
+        for _ in range(min(5, len(base_population))):
+            parent = choice(base_population)
+            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
+            new_population.append(simplified)
+
+    return new_population
+
 def analyze_crash_files():
     """Analiza los archivos de crash guardados para buscar patrones"""
     crash_dir = "kernelhunter_critical"
@@ -1596,7 +2071,7 @@ def analyze_crash_files():
                 except Exception as e:
                     pass
 
-def main():
+async def main_async():
     banner = """
   _  __                    _   _   _             _
  | |/ /___ _ __ _ __   ___| | | | | |_   _ _ __ | |_ ___ _ __
@@ -1631,7 +2106,7 @@ def main():
     try:
         for gen in range(MAX_GENERATIONS):
             print(f"\nGeneración {gen}/{MAX_GENERATIONS} (población: {len(population)})")
-            population = run_generation(gen, population)
+            population = await run_generation_parallel(gen, population)
 
     except KeyboardInterrupt:
         print("\n\nProceso interrumpido por el usuario.")
@@ -1651,6 +2126,9 @@ def main():
             print(f"- Directorio de crashes críticos: kernelhunter_critical/")
 
         print("\nKernelHunter ha completado su ejecución.")
+
+def main():
+    asyncio.run(main_async())
 
 if __name__ == "__main__":
     import argparse
