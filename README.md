@@ -99,6 +99,19 @@ python kernelhunter_config.py --api-key YOUR_OPENAI_KEY
 The `OPENAI_API_KEY` environment variable still takes precedence over the value
 stored in the configuration file.
 
+To enable the experimental reinforcement learning mode that adapts attack and
+mutation probabilities over time, set the `use_rl_weights` flag:
+
+```bash
+python kernelhunter_config.py --use-rl-weights
+# Optionally provide custom starting weights
+python kernelhunter_config.py --attack-weights 2,1,1,6,5,...
+python kernelhunter_config.py --mutation-weights 22,12,18,18,10,8,8,4
+```
+
+When enabled, updated weights are recorded in `kernelhunter_metrics.json` after
+each generation.
+
 
 
 ## Quick Start

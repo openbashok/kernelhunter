@@ -18,12 +18,18 @@ USER_RESERVOIR_DIR = os.path.join(os.path.expanduser("~"), ".local", "share", "k
 
 DEFAULT_SYSTEM_CONFIG = {
     "reservoir_path": "/var/lib/kernelhunter/reservoir",
-    "openai_api_key": ""
+    "openai_api_key": "",
+    "use_rl_weights": False,
+    "attack_weights": None,
+    "mutation_weights": None
 }
 
 DEFAULT_USER_CONFIG = {
     "reservoir_path": USER_RESERVOIR_DIR,
-    "openai_api_key": ""
+    "openai_api_key": "",
+    "use_rl_weights": False,
+    "attack_weights": None,
+    "mutation_weights": None
 }
 
 
@@ -104,6 +110,9 @@ def main() -> None:
     parser.add_argument("--show", action="store_true", help="Display current configuration")
     parser.add_argument("--reservoir-path", help="Set reservoir directory path")
     parser.add_argument("--api-key", help="Set OpenAI API key")
+    parser.add_argument("--use-rl-weights", action="store_true", help="Enable reinforcement learning weights")
+    parser.add_argument("--attack-weights", help="Comma separated list of attack weights")
+    parser.add_argument("--mutation-weights", help="Comma separated list of mutation weights")
     args = parser.parse_args()
 
     config = load_config()
@@ -114,10 +123,19 @@ def main() -> None:
     if args.api_key is not None:
         config["openai_api_key"] = args.api_key
 
-    if args.reservoir_path or args.api_key is not None:
+    if args.use_rl_weights:
+        config["use_rl_weights"] = True
+
+    if args.attack_weights:
+        config["attack_weights"] = [int(x) for x in args.attack_weights.split(',') if x]
+
+    if args.mutation_weights:
+        config["mutation_weights"] = [int(x) for x in args.mutation_weights.split(',') if x]
+
+    if args.reservoir_path or args.api_key is not None or args.use_rl_weights or args.attack_weights or args.mutation_weights:
         save_config(config)
 
-    if args.show or not (args.reservoir_path or args.api_key is not None):
+    if args.show or not (args.reservoir_path or args.api_key is not None or args.use_rl_weights or args.attack_weights or args.mutation_weights):
         print(json.dumps(config, indent=4))
 
 
