@@ -109,8 +109,17 @@ python kernelhunter_config.py --attack-weights 2,1,1,6,5,...
 python kernelhunter_config.py --mutation-weights 22,12,18,18,10,8,8,4
 ```
 
-When enabled, updated weights are recorded in `kernelhunter_metrics.json` after
-each generation.
+Alternatively, you can enable RL directly when running the fuzzer:
+
+```bash
+python kernelHunter.py --use-rl-weights
+```
+
+When invoked with this flag, KernelHunter starts with the default weights and
+balances them after each execution based on observed crashes.
+
+When reinforcement learning is active, updated weights are recorded in
+`kernelhunter_metrics.json` after each execution.
 
 
 
