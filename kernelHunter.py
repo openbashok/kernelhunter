@@ -422,6 +422,8 @@ metrics = {
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
+generation_attack_counter = Counter()
+generation_mutation_counter = Counter()
 total_attack_counter = Counter()  # Contador acumulativo total de ataques
 total_mutation_counter = Counter()  # Contador acumulativo total de mutaciones
 if USE_RL_WEIGHTS:
@@ -482,14 +484,14 @@ def remove_intermediate_exit_syscalls(shellcode):
 
 def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
-    global last_attack_type, total_attack_counter
+    global last_attack_type, total_attack_counter, generation_attack_counter
     if USE_RL_WEIGHTS:
         current_epsilon = get_epsilon(current_generation)
         choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_q_values, current_epsilon)
     else:
         choice_type = random.choices(ATTACK_OPTIONS, weights=attack_weights)[0]
     last_attack_type = choice_type
-    attack_counter[choice_type] += 1
+    generation_attack_counter[choice_type] += 1
     total_attack_counter[choice_type] += 1  # Nuevo: contador acumulativo
     metrics.setdefault('attack_totals', {})[choice_type] = total_attack_counter[choice_type]
     write_metrics()
@@ -933,14 +935,14 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
     # Asegurar que no hay EXIT_SYSCALL intermedios
     core = remove_intermediate_exit_syscalls(core)
 
-    global last_mutation_type, total_mutation_counter
+    global last_mutation_type, total_mutation_counter, generation_mutation_counter
     if USE_RL_WEIGHTS:
         current_epsilon = get_epsilon(current_generation)
         mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_q_values, current_epsilon)
     else:
         mutation_type = random.choices(MUTATION_TYPES, weights=mutation_weights)[0]
     last_mutation_type = mutation_type
-    mutation_counter[mutation_type] += 1
+    generation_mutation_counter[mutation_type] += 1
     total_mutation_counter[mutation_type] += 1  # Nuevo: contador acumulativo
     metrics.setdefault("mutation_totals", {})[mutation_type] = total_mutation_counter[mutation_type]
     write_metrics()
@@ -1318,13 +1320,13 @@ def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, retu
 
 def run_generation(gen_id, base_population):
     """Ejecuta una generación completa del algoritmo evolutivo"""
-    global individual_zero_crash_counts, attack_counter, mutation_counter
+    global individual_zero_crash_counts, generation_attack_counter, generation_mutation_counter
     global attack_success, mutation_success, current_generation
     current_generation = gen_id
 
     # Reset counters for this generation
-    attack_counter.clear()
-    mutation_counter.clear()
+    generation_attack_counter = Counter()
+    generation_mutation_counter = Counter()
     attack_success.clear()
     mutation_success.clear()
 
@@ -1726,8 +1728,12 @@ def run_generation(gen_id, base_population):
     metrics["system_impacts"].append(system_impacts)
     metrics["shellcode_lengths"].append(avg_length)
     metrics["crash_types"][gen_id] = dict(crash_types_counter)
-    metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
-    metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
+    metrics.setdefault("attack_stats", {})[gen_id] = dict(generation_attack_counter)
+    metrics.setdefault("mutation_stats", {})[gen_id] = dict(generation_mutation_counter)
+    for choice_type in total_attack_counter:
+        metrics.setdefault("attack_totals", {})[choice_type] = total_attack_counter[choice_type]
+    for mutation_type in total_mutation_counter:
+        metrics.setdefault("mutation_totals", {})[mutation_type] = total_mutation_counter[mutation_type]
     write_metrics()
 
     update_rl_weights()
@@ -1833,12 +1839,12 @@ def run_generation(gen_id, base_population):
 
 async def run_generation_parallel(gen_id, base_population):
     """Versión paralela de run_generation usando asyncio y ProcessPoolExecutor"""
-    global individual_zero_crash_counts, attack_counter, mutation_counter
+    global individual_zero_crash_counts, generation_attack_counter, generation_mutation_counter
     global attack_success, mutation_success, current_generation
     current_generation = gen_id
 
-    attack_counter.clear()
-    mutation_counter.clear()
+    generation_attack_counter = Counter()
+    generation_mutation_counter = Counter()
     attack_success.clear()
     mutation_success.clear()
 
@@ -1968,8 +1974,12 @@ async def run_generation_parallel(gen_id, base_population):
     metrics["system_impacts"].append(system_impacts)
     metrics["shellcode_lengths"].append(avg_length)
     metrics["crash_types"][gen_id] = dict(crash_types_counter)
-    metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
-    metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
+    metrics.setdefault("attack_stats", {})[gen_id] = dict(generation_attack_counter)
+    metrics.setdefault("mutation_stats", {})[gen_id] = dict(generation_mutation_counter)
+    for choice_type in total_attack_counter:
+        metrics.setdefault("attack_totals", {})[choice_type] = total_attack_counter[choice_type]
+    for mutation_type in total_mutation_counter:
+        metrics.setdefault("mutation_totals", {})[mutation_type] = total_mutation_counter[mutation_type]
     write_metrics()
 
     update_rl_weights()
