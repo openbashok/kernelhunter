@@ -16,10 +16,12 @@ from random import randint, choice
 from collections import Counter
 from genetic_reservoir import GeneticReservoir
 try:
-    from kernelhunter_config import get_reservoir_file
+    from kernelhunter_config import get_reservoir_file, load_config
 except Exception:
     def get_reservoir_file(name="kernelhunter_reservoir.pkl"):
         return name
+    def load_config():
+        return {}
 from memory_pressure_mutation import generate_memory_pressure_fragment
 from advanced_crossover import crossover_shellcodes_advanced
 from cache_pollution_attack import generate_cache_pollution_fragment
@@ -94,6 +96,100 @@ CHECKPOINT_INTERVAL = 10
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs("kernelhunter_crashes", exist_ok=True)
 os.makedirs("kernelhunter_critical", exist_ok=True)
+
+# Load configuration for reinforcement learning
+cfg = load_config()
+USE_RL_WEIGHTS = cfg.get("use_rl_weights", False)
+
+# Attack options and weights
+ATTACK_OPTIONS = [
+    "random_bytes",
+    "syscall_setup",
+    "syscall",
+    "memory_access",
+    "privileged",
+    "arithmetic",
+    "control_flow",
+    "x86_opcode",
+    "simd",
+    "known_vulns",
+    "segment_registers",
+    "speculative_exec",
+    "forced_exception",
+    "control_registers",
+    "stack_manipulation",
+    "full_kernel_syscall",
+    "memory_pressure",
+    "cache_pollution",
+    "control_flow_trap",
+    "deep_rop_chain",
+    "dma_confusion",
+    "entropy_drain",
+    "external_adn",
+    "function_adn",
+    "filesystem_chaos",
+    "gene_bank",
+    "gene_bank_dynamic",
+    "hyper_corruptor",
+    "interrupt_storm",
+    "ipc_stress",
+    "kpti_breaker",
+    "memory_fragmentation",
+    "module_loading_storm",
+    "network_stack_fuzz",
+    "neutral_mutation",
+    "nop_island",
+    "page_fault_flood",
+    "pointer_attack",
+    "privileged_cpu_destruction",
+    "privileged_storm",
+    "resource_starvation",
+    "scheduler_attack",
+    "shadow_corruptor",
+    "smap_smep_bypass",
+    "speculative_confusion",
+    "syscall_reentrancy_storm",
+    "syscall_storm",
+    "syscall_table_stress",
+    "ultimate_panic",
+    "ai_shellcode",
+]
+
+DEFAULT_ATTACK_WEIGHTS = [
+    2, 1, 1, 6, 5, 1, 6, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    2, 1
+]
+
+MUTATION_TYPES = [
+    "add",
+    "remove",
+    "modify",
+    "duplicate",
+    "mass_duplicate",
+    "invert",
+    "transpose_nop",
+    "crispr",
+]
+
+DEFAULT_MUTATION_WEIGHTS = [22, 12, 18, 18, 10, 8, 8, 4]
+
+attack_weights = cfg.get("attack_weights") or DEFAULT_ATTACK_WEIGHTS.copy()
+if len(attack_weights) != len(ATTACK_OPTIONS):
+    attack_weights = DEFAULT_ATTACK_WEIGHTS.copy()
+
+mutation_weights = cfg.get("mutation_weights") or DEFAULT_MUTATION_WEIGHTS.copy()
+if len(mutation_weights) != len(MUTATION_TYPES):
+    mutation_weights = DEFAULT_MUTATION_WEIGHTS.copy()
+
+attack_index = {name: i for i, name in enumerate(ATTACK_OPTIONS)}
+mutation_index = {name: i for i, name in enumerate(MUTATION_TYPES)}
+
+last_attack_type = None
+last_mutation_type = None
+attack_success = Counter()
+mutation_success = Counter()
+
 
 
 syscalls = {}
@@ -219,11 +315,15 @@ metrics = {
     # Totals across the entire fuzzing run
     "attack_totals": {},
     "mutation_totals": {},
+    "attack_weights_history": [],
+    "mutation_weights_history": [],
 }
 
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
+metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
+metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
 
 def write_metrics():
     """Persist current metrics to disk"""
@@ -234,6 +334,27 @@ def write_metrics():
         # Silently ignore errors when persisting metrics so the fuzzer can
         # continue running even if writing fails (e.g. due to filesystem issues)
         pass
+
+def update_rl_weights():
+    """Adjust attack and mutation weights based on successes"""
+    if not USE_RL_WEIGHTS:
+        return
+
+    for name, count in attack_success.items():
+        idx = attack_index.get(name)
+        if idx is not None:
+            attack_weights[idx] += count
+
+    for name, count in mutation_success.items():
+        idx = mutation_index.get(name)
+        if idx is not None:
+            mutation_weights[idx] += count
+
+    metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
+    metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
+    attack_success.clear()
+    mutation_success.clear()
+    write_metrics()
 
 # Contador para generaciones consecutivas sin crashes por individuo
 individual_zero_crash_counts = {}
@@ -262,121 +383,12 @@ def remove_intermediate_exit_syscalls(shellcode):
 
 def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
-    # Opciones para generar instrucciones - Esto seria como las unidades de ADN
-    options = [
-        "random_bytes",      # bytes completamente aleatorios
-        "syscall_setup",     # configuración para syscall
-        "syscall",           # instrucción de syscall
-        "memory_access",     # acceso a memoria potencialmente peligroso
-        "privileged",        # instrucciones privilegiadas
-        "arithmetic",        # operaciones aritméticas
-        "control_flow",      # instrucciones de salto/control de flujo
-        "x86_opcode",        # opcodes x86 completamente aleatorios
-        "simd",              # instrucciones SIMD (SSE, AVX)
-        "known_vulns",       # vulenrabilidades de kenel conocidas
-        "segment_registers", # manipulación registros segmento
-        "speculative_exec",  # ejecución especulativa
-        "forced_exception",  # excepciones deliberadas
-        "control_registers", # registros de control CPU
-        "stack_manipulation", # manipulación del stack
-        "full_kernel_syscall", #todas las syscalls disponicles del kernel
-        "memory_pressure",
-        "cache_pollution",
-        "control_flow_trap",
-        "deep_rop_chain",
-        "dma_confusion",
-        "entropy_drain",
-        "external_adn",
-        "function_adn",
-        "filesystem_chaos",
-        "gene_bank",
-        "gene_bank_dynamic",
-        "hyper_corruptor",
-        "interrupt_storm",
-        "ipc_stress",
-        "kpti_breaker",
-        "memory_fragmentation",
-        "module_loading_storm",
-        "network_stack_fuzz",
-        "neutral_mutation",
-        "nop_island",
-        "page_fault_flood",
-        "pointer_attack",
-        "privileged_cpu_destruction",
-        "privileged_storm",
-        "resource_starvation",
-        "scheduler_attack",
-        "shadow_corruptor",
-        "smap_smep_bypass",
-        "speculative_confusion",
-        "syscall_reentrancy_storm",
-        "syscall_storm",
-        "syscall_table_stress",
-        "ultimate_panic",
-        "ai_shellcode",
-    ]
-
-    #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
-    #weights = [5, 0, 30, 0, 20, 0, 0, 5, 0, 30]  # Probabilidades relativas
-    #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,100]
-    #weights = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 15, 5, 5, 5]
-    #weights = [5, 3, 2, 5, 2, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-    #weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,100]
-    weights = [
-        2,  # random_bytes
-        1,  # syscall_setup
-        1,  # syscall
-        6,  # memory_access
-        5,  # privileged
-        1,  # arithmetic
-        6,  # control_flow
-        5,  # x86_opcode
-        1,  # simd
-        1,  # known_vulns
-        1,  # segment_registers
-        1,  # speculative_exec
-        1,  # forced_exception
-        1,  # control_registers
-        1,  # stack_manipulation
-        1,  # full_kernel_syscall
-        1,  # memory_pressure
-        1,  # cache_pollution
-        1,  # control_flow_trap
-        1,  # deep_rop_chain
-        1,  # dma_confusion
-        1,  # entropy_drain
-        1,  # external_adn
-        1,  # function_adn
-        1,  # filesystem_chaos
-        1,  # gene_bank
-        1,  # gene_bank_dynamic
-        1,  # hyper_corruptor
-        1,  # interrupt_storm
-        1,  # ipc_stress
-        1,  # kpti_breaker
-        1,  # memory_fragmentation
-        1,  # module_loading_storm
-        1,  # network_stack_fuzz
-        1,  # neutral_mutation
-        1,  # nop_island
-        1,  # page_fault_flood
-        1,  # pointer_attack
-        3,  # privileged_cpu_destruction
-        3,  # privileged_storm
-        1,  # resource_starvation
-        1,  # scheduler_attack
-        1,  # shadow_corruptor
-        1,  # smap_smep_bypass
-        1,  # speculative_confusion
-        1,  # syscall_reentrancy_storm
-        1,  # syscall_storm
-        1,  # syscall_table_stress
-        2,  # ultimate_panic
-        1   # ai_shellcode
-    ]
-    choice_type = random.choices(options, weights=weights)[0]
+    global last_attack_type
+    choice_type = random.choices(ATTACK_OPTIONS, weights=attack_weights)[0]
+    last_attack_type = choice_type
     attack_counter[choice_type] += 1
-    metrics.setdefault("attack_totals", {})[choice_type] = metrics["attack_totals"].get(choice_type, 0) + 1
+    metrics.setdefault('attack_totals', {}).setdefault(choice_type, 0)
+    metrics['attack_totals'][choice_type] += 1
     write_metrics()
 
     if choice_type == "random_bytes":
@@ -818,16 +830,9 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
     # Asegurar que no hay EXIT_SYSCALL intermedios
     core = remove_intermediate_exit_syscalls(core)
 
-    mutation_type = random.choices([
-        "add",      # Añadir instrucción
-        "remove",   # Quitar instrucción
-        "modify",   # Modificar instrucción existente
-        "duplicate", # Duplicar sección
-        "mass_duplicate", # Duplicación avanzada
-        "invert",  # Invertir fragmentos
-        "transpose_nop",  # Mover fragmentos entre islas de NOP
-        "crispr"    # Edición dirigida de syscalls
-    ], weights=[22, 12, 18, 18, 10, 8, 8, 4])[0]
+    global last_mutation_type
+    mutation_type = random.choices(MUTATION_TYPES, weights=mutation_weights)[0]
+    last_mutation_type = mutation_type
     mutation_counter[mutation_type] += 1
     metrics.setdefault("mutation_totals", {})[mutation_type] = metrics["mutation_totals"].get(mutation_type, 0) + 1
     write_metrics()
@@ -939,10 +944,13 @@ def save_crash_info(gen_id, prog_id, shellcode, crash_type, stderr, stdout, retu
 def run_generation(gen_id, base_population):
     """Ejecuta una generación completa del algoritmo evolutivo"""
     global individual_zero_crash_counts, attack_counter, mutation_counter
+    global attack_success, mutation_success
 
     # Reset counters for this generation
     attack_counter.clear()
     mutation_counter.clear()
+    attack_success.clear()
+    mutation_success.clear()
 
     gen_path = os.path.join(OUTPUT_DIR, f"gen_{gen_id:04d}")
     os.makedirs(gen_path, exist_ok=True)
@@ -1249,6 +1257,9 @@ def run_generation(gen_id, base_population):
                                    stdout_text, result.returncode, is_system_impact, parent)
 
                     crashes += 1
+                    if USE_RL_WEIGHTS:
+                        attack_success[last_attack_type] += 1
+                        mutation_success[last_mutation_type] += 1
 
             # Manejar otros tipos de errores
             except subprocess.TimeoutExpired:
@@ -1261,6 +1272,9 @@ def run_generation(gen_id, base_population):
                     fc.write(stub)
                 crashes += 1
                 crash_types_counter[crash_type] += 1
+                if USE_RL_WEIGHTS:
+                    attack_success[last_attack_type] += 1
+                    mutation_success[last_mutation_type] += 1
 
             except subprocess.CalledProcessError:
                 crash_type = "COMPILE_ERROR"
@@ -1270,6 +1284,9 @@ def run_generation(gen_id, base_population):
                 crash_log.write(msg + "\n")
                 crashes += 1
                 crash_types_counter[crash_type] += 1
+                if USE_RL_WEIGHTS:
+                    attack_success[last_attack_type] += 1
+                    mutation_success[last_mutation_type] += 1
 
     # Asegurar que siempre hay población
     if not new_population:
@@ -1299,6 +1316,9 @@ def run_generation(gen_id, base_population):
     metrics.setdefault("attack_stats", {})[gen_id] = dict(attack_counter)
     metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
     write_metrics()
+
+    if USE_RL_WEIGHTS:
+        update_rl_weights()
 
     # Guardar checkpoint periódico
     if gen_id % CHECKPOINT_INTERVAL == 0:
