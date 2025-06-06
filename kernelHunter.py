@@ -106,8 +106,8 @@ SYSCALL_SETUP = [
 
 # Configuración
 OUTPUT_DIR = "kernelhunter_generations"
-NUM_PROGRAMS = 100
-MAX_GENERATIONS = 10000
+NUM_PROGRAMS = 50
+MAX_GENERATIONS = 1000
 TIMEOUT = 3
 LOG_FILE = "kernelhunter_survivors.txt"
 CRASH_LOG = "kernelhunter_crashes.txt"
