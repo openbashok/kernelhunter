@@ -58,6 +58,7 @@ from syscall_storm import generate_syscall_storm
 from syscall_table_stress import generate_syscall_table_stress_fragment
 from transposition_mutation_nop import transpose_fragment_nop_aware
 from ultimate_kernel_panic_generator import generate_ultimate_panic_fragment
+from ai_shellcode_mutation import generate_ai_shellcode_fragment
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -312,6 +313,7 @@ def generate_random_instruction():
         "syscall_storm",
         "syscall_table_stress",
         "ultimate_panic",
+        "ai_shellcode",
     ]
 
     #weights = [100, 0, 0, 0, 0, 0, 0, 0, 0]  # Probabilidades relativas
@@ -369,7 +371,8 @@ def generate_random_instruction():
         1,  # syscall_reentrancy_storm
         1,  # syscall_storm
         1,  # syscall_table_stress
-        2   # ultimate_panic
+        2,  # ultimate_panic
+        1   # ai_shellcode
     ]
     choice_type = random.choices(options, weights=weights)[0]
     attack_counter[choice_type] += 1
@@ -479,6 +482,8 @@ def generate_random_instruction():
         return generate_scheduler_attack_fragment(min_ops=5, max_ops=15)
     elif choice_type == "ultimate_panic":
         return generate_ultimate_panic_fragment(min_ops=20, max_ops=40)
+    elif choice_type == "ai_shellcode":
+        return generate_ai_shellcode_fragment()
     elif choice_type == "memory_access":
         # Instrucciones que acceden a memoria, más probabilidad de fallos
         mem_instructions = [
