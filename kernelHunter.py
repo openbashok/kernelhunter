@@ -1726,19 +1726,38 @@ def run_generation(gen_id, base_population):
     print(color_text(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}", "cyan"))
     print(color_text(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}", "cyan"))
 
-    try:
-        pythonlogger.log_generation(
-            generation_id=gen_id,
-            population_size=len(base_population),
-            crash_rate=crash_rate,
-            system_impacts=system_impacts,
-            avg_shellcode_length=avg_length,
-            crash_types=dict(crash_types_counter),
-            attack_stats=dict(generation_attack_counter),
-            mutation_stats=dict(generation_mutation_counter)
-        )
-    except Exception as e:
-        print(f"[WARNING] Error logging generation: {e}")
+    rl_data = {
+        "attack_q_values": list(attack_q_values),
+        "mutation_q_values": list(mutation_q_values),
+        "epsilon": get_epsilon(gen_id)
+    } if USE_RL_WEIGHTS else {
+        "attack_weights": attack_weights,
+        "mutation_weights": mutation_weights,
+        "epsilon": get_epsilon(gen_id)
+    }
+
+    diversity_data = genetic_reservoir.get_diversity_stats()
+
+    print(f"[DEBUG] Llamando a log_generation con gen_id={gen_id}")
+    print(f"[DEBUG] population_size={len(base_population)} crash_rate={crash_rate} system_impacts={system_impacts} avg_len={avg_length}")
+    print(f"[DEBUG] crash_types={dict(crash_types_counter)}")
+    print(f"[DEBUG] attack_stats={dict(generation_attack_counter)}")
+    print(f"[DEBUG] mutation_stats={dict(generation_mutation_counter)}")
+    print(f"[DEBUG] rl_data={rl_data}")
+    print(f"[DEBUG] diversity_data={diversity_data}")
+
+    pythonlogger.log_generation(
+        generation_id=gen_id,
+        population_size=len(base_population),
+        crash_rate=crash_rate,
+        system_impacts=system_impacts,
+        avg_shellcode_length=avg_length,
+        crash_types=dict(crash_types_counter),
+        attack_stats=dict(generation_attack_counter),
+        mutation_stats=dict(generation_mutation_counter),
+        rl_weights=rl_data,
+        diversity_metrics=diversity_data
+    )
 
     # Actualizar métricas
     metrics["generations"].append(gen_id)
