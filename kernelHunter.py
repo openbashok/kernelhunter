@@ -1872,6 +1872,22 @@ def run_generation(gen_id, base_population):
             simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
             new_population.append(simplified)
 
+    # Attempt to log generation statistics
+    try:
+        pythonlogger.log_generation(
+            generation_id=gen_id,
+            population_size=len(new_population),
+            crash_rate=crash_rate,
+            system_impacts=system_impacts,
+            avg_shellcode_length=avg_length,
+            crash_types=dict(crash_types_counter),
+            attack_stats=dict(generation_attack_counter),
+            mutation_stats=dict(generation_mutation_counter)
+        )
+        print(f"[DEBUG] \u2713 Logger llamado para generación {gen_id}")
+    except Exception as e:
+        print(f"[DEBUG] \u2717 Error en logger gen {gen_id}: {e}")
+
     return new_population
 
 async def run_generation_parallel(gen_id, base_population):
@@ -2082,6 +2098,22 @@ async def run_generation_parallel(gen_id, base_population):
             parent = choice(base_population)
             simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
             new_population.append(simplified)
+
+    # Attempt to log generation statistics
+    try:
+        pythonlogger.log_generation(
+            generation_id=gen_id,
+            population_size=len(new_population),
+            crash_rate=crash_rate,
+            system_impacts=system_impacts,
+            avg_shellcode_length=avg_length,
+            crash_types=dict(crash_types_counter),
+            attack_stats=dict(generation_attack_counter),
+            mutation_stats=dict(generation_mutation_counter)
+        )
+        print(f"[DEBUG] \u2713 Logger llamado para generación {gen_id}")
+    except Exception as e:
+        print(f"[DEBUG] \u2717 Error en logger gen {gen_id}: {e}")
 
     return new_population
 
