@@ -113,6 +113,8 @@ LOG_FILE = "kernelhunter_survivors.txt"
 CRASH_LOG = "kernelhunter_crashes.txt"
 METRICS_FILE = "kernelhunter_metrics.json"
 CHECKPOINT_INTERVAL = 10
+MAX_POPULATION_SIZE = 1000  # Límite por recursos
+NATURAL_SELECTION_MODE = True  # Selección natural sin sesgos
 
 # Crear directorios necesarios
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -485,6 +487,16 @@ def remove_intermediate_exit_syscalls(shellcode):
             i += 1
 
     return core
+
+def deduplicate_population(population):
+    """Remove duplicate shellcodes while preserving order"""
+    unique = []
+    seen = set()
+    for indiv in population:
+        if indiv not in seen:
+            unique.append(indiv)
+            seen.add(indiv)
+    return unique
 
 def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
@@ -1351,13 +1363,8 @@ def run_generation(gen_id, base_population):
             if i % 5 == 0:  # Mostrar progreso cada 5 programas
                 print(f"Generando individuos {i}/{NUM_PROGRAMS}", end="\r")
 
-            # Seleccionar un padre (preferencia por shellcodes más largos)
-            if random.random() < 0.2 and len(base_population) > 1:
-                # Seleccionar uno de los shellcodes más largos 20% del tiempo
-                sorted_by_len = sorted(base_population, key=len, reverse=True)
-                parent = sorted_by_len[randint(0, min(5, len(sorted_by_len)-1))]
-            else:
-                parent = choice(base_population)
+            # Selección natural pura - sin sesgos artificiales
+            parent = choice(base_population)
 
             if random.random() < 0.3:
                 other_parent = choice(base_population)
@@ -1714,8 +1721,7 @@ def run_generation(gen_id, base_population):
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
-            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
-            new_population.append(simplified)
+            new_population.append(mutate_shellcode(parent))
 
     # Calcular y mostrar métricas
     crash_rate = crashes / NUM_PROGRAMS
@@ -1821,37 +1827,11 @@ def run_generation(gen_id, base_population):
             # Iniciar con los individuos no estancados
             new_population = non_stagnant.copy()
 
-            # Generar nuevos individuos agresivos para reemplazar los estancados
+            # Generar nuevos individuos aplicando mutaciones a la población existente
             for _ in range(len(stagnant_individuals)):
-                aggressive_shellcode = b""
-                # Añadir entre 5-15 instrucciones aleatorias con preferencia por syscalls y accesos a memoria
-                for _ in range(randint(5, 15)):
-                    instr_type = random.choices(
-                        ["syscall", "memory_access", "privileged", "random_bytes"],
-                        weights=[40, 30, 20, 10]
-                    )[0]
-
-                    if instr_type == "syscall":
-                        # Configuración de syscall con número aleatorio
-                        syscall_num = randint(0, 255)  # Limitamos a 0-255 para evitar errores
-                        aggressive_shellcode += SYSCALL_SETUP[0] + bytes([syscall_num, 0, 0, 0])
-                        aggressive_shellcode += SYSCALL_PATTERN
-                    elif instr_type == "memory_access":
-                        aggressive_shellcode += b"\x48\x8b" + bytes([randint(0, 255), randint(0, 255)])
-                    elif instr_type == "privileged":
-                        aggressive_shellcode += b"\x0f\x01" + bytes([randint(0, 255)])
-                    else:
-                        aggressive_shellcode += bytes([randint(0, 255) for _ in range(randint(1, 4))])
-
-                # 50% de probabilidad de añadir EXIT_SYSCALL
-                if random.random() < 0.5:
-                    aggressive_shellcode += EXIT_SYSCALL
-
-                # Añadir el nuevo individuo a la población
-                new_population.append(aggressive_shellcode)
-
-                # Mostrar información sobre el nuevo shellcode
-                print(color_text(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}", "green"))
+                parent = choice(base_population)
+                mutated = mutate_shellcode(parent)
+                new_population.append(mutated)
 
             # Limpiar contadores antiguos para ahorrar memoria
             if len(individual_zero_crash_counts) > 1000:  # Límite arbitrario
@@ -1870,8 +1850,7 @@ def run_generation(gen_id, base_population):
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
-            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
-            new_population.append(simplified)
+            new_population.append(mutate_shellcode(parent))
 
     # Attempt to log generation statistics
     try:
@@ -1889,7 +1868,10 @@ def run_generation(gen_id, base_population):
     except Exception as e:
         print(f"[DEBUG] \u2717 Error en logger gen {gen_id}: {e}")
 
-    return new_population
+    combined_population = deduplicate_population(base_population + new_population)
+    if len(combined_population) > MAX_POPULATION_SIZE:
+        combined_population = random.sample(combined_population, MAX_POPULATION_SIZE)
+    return combined_population
 
 async def run_generation_parallel(gen_id, base_population):
     """Versión paralela de run_generation usando asyncio y ProcessPoolExecutor"""
@@ -1923,11 +1905,8 @@ async def run_generation_parallel(gen_id, base_population):
                 if i % 5 == 0:
                     print(f"Generando individuos {i}/{NUM_PROGRAMS}", end="\r")
 
-                if random.random() < 0.2 and len(base_population) > 1:
-                    sorted_by_len = sorted(base_population, key=len, reverse=True)
-                    parent = sorted_by_len[randint(0, min(5, len(sorted_by_len)-1))]
-                else:
-                    parent = choice(base_population)
+                # Selección natural pura - sin sesgos artificiales
+                parent = choice(base_population)
 
                 tasks.append(process_single_program_async(executor, i, parent, gen_id, gen_path))
 
@@ -2014,8 +1993,7 @@ async def run_generation_parallel(gen_id, base_population):
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
-            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
-            new_population.append(simplified)
+            new_population.append(mutate_shellcode(parent))
 
     crash_rate = crashes / NUM_PROGRAMS
     avg_length = sum(shellcode_lengths) / len(shellcode_lengths) if shellcode_lengths else 0
@@ -2067,23 +2045,9 @@ async def run_generation_parallel(gen_id, base_population):
             print(color_text(f"[GEN {gen_id}] Manteniendo {len(non_stagnant)} individuos, creando {len(stagnant_individuals)} nuevos.", "yellow"))
             new_population = non_stagnant.copy()
             for _ in range(len(stagnant_individuals)):
-                aggressive_shellcode = b""
-                for _ in range(randint(5, 15)):
-                    instr_type = random.choices(["syscall", "memory_access", "privileged", "random_bytes"], weights=[40, 30, 20, 10])[0]
-                    if instr_type == "syscall":
-                        syscall_num = randint(0, 255)
-                        aggressive_shellcode += SYSCALL_SETUP[0] + bytes([syscall_num, 0, 0, 0])
-                        aggressive_shellcode += SYSCALL_PATTERN
-                    elif instr_type == "memory_access":
-                        aggressive_shellcode += b"\x48\x8b" + bytes([randint(0,255), randint(0,255)])
-                    elif instr_type == "privileged":
-                        aggressive_shellcode += b"\x0f\x01" + bytes([randint(0,255)])
-                    else:
-                        aggressive_shellcode += bytes([randint(0, 255) for _ in range(randint(1,4))])
-                if random.random() < 0.5:
-                    aggressive_shellcode += EXIT_SYSCALL
-                new_population.append(aggressive_shellcode)
-                print(color_text(f"Nuevo individuo generado: {print_shellcode_hex(aggressive_shellcode, max_bytes=20, escape_format=True)}", "green"))
+                parent = choice(base_population)
+                mutated = mutate_shellcode(parent)
+                new_population.append(mutated)
             if len(individual_zero_crash_counts) > 1000:
                 individual_zero_crash_counts = {k: v for k, v in individual_zero_crash_counts.items() if v >= MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS // 2}
     elif crash_rate > 0:
@@ -2097,8 +2061,7 @@ async def run_generation_parallel(gen_id, base_population):
         new_population = [BASE_SHELLCODE + EXIT_SYSCALL]
         for _ in range(min(5, len(base_population))):
             parent = choice(base_population)
-            simplified = parent[:len(parent)//2] + EXIT_SYSCALL if len(parent) > 10 else parent
-            new_population.append(simplified)
+            new_population.append(mutate_shellcode(parent))
 
     # Attempt to log generation statistics
     try:
@@ -2116,7 +2079,10 @@ async def run_generation_parallel(gen_id, base_population):
     except Exception as e:
         print(f"[DEBUG] \u2717 Error en logger gen {gen_id}: {e}")
 
-    return new_population
+    combined_population = deduplicate_population(base_population + new_population)
+    if len(combined_population) > MAX_POPULATION_SIZE:
+        combined_population = random.sample(combined_population, MAX_POPULATION_SIZE)
+    return combined_population
 
 def analyze_crash_files():
     """Analiza los archivos de crash guardados para buscar patrones"""
