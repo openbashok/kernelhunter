@@ -407,8 +407,12 @@ metrics = {
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
-metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
-metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
+if USE_RL_WEIGHTS:
+    metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
+    metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
+else:
+    metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
+    metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
 
 def write_metrics():
     """Persist current metrics to disk"""
@@ -1705,8 +1709,7 @@ def run_generation(gen_id, base_population):
     metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
     write_metrics()
 
-    if USE_RL_WEIGHTS:
-        update_rl_weights()
+    update_rl_weights()
 
     # Guardar checkpoint periódico
     if gen_id % CHECKPOINT_INTERVAL == 0:
@@ -1945,8 +1948,7 @@ async def run_generation_parallel(gen_id, base_population):
     metrics.setdefault("mutation_stats", {})[gen_id] = dict(mutation_counter)
     write_metrics()
 
-    if USE_RL_WEIGHTS:
-        update_rl_weights()
+    update_rl_weights()
 
     if gen_id % CHECKPOINT_INTERVAL == 0:
         with open(METRICS_FILE, "w") as f:
@@ -2096,7 +2098,8 @@ async def main_async():
     with open(CRASH_LOG, "w") as crash_log:
         crash_log.write("KernelHunter - Log de crashes clasificados\n=======================================\n")
 
-
+    # Record initial weight configuration
+    update_rl_weights()
     # Add reservoir samples to initial population
     if len(genetic_reservoir) > 0:
         # Get a diverse sample from the reservoir
