@@ -1079,7 +1079,7 @@ def generate_c_stub(shellcode_c):
                     return -1;
                 }}
 
-                write(1, "[+] Listening\n", 14);
+                write(1, "[+] Listening\\n", 14);
                 return 0;
             }}
 
@@ -1142,7 +1142,7 @@ def generate_c_stub(shellcode_c):
                         break;
                     case FUNC_SEND:
                         write(1, "[*] Sending data...\\n", 20);
-                        send_data("Hello from stub\n", 16);
+                        send_data("Hello from stub\\n", 16);
                         break;
                     case FUNC_RECV: {{
                         write(1, "[*] Receiving data...\\n", 22);
