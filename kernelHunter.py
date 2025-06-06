@@ -421,14 +421,17 @@ def write_metrics():
         pass
 
 def update_rl_weights():
-    """Record current Q-values for analysis."""
-    if not USE_RL_WEIGHTS:
-        return
+    """Record current weight values for analysis."""
 
-    metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
-    metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
-    attack_success.clear()
-    mutation_success.clear()
+    if USE_RL_WEIGHTS:
+        metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
+        metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
+        attack_success.clear()
+        mutation_success.clear()
+    else:
+        metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
+        metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
+
     write_metrics()
 
 # Contador para generaciones consecutivas sin crashes por individuo
