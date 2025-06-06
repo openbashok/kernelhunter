@@ -1726,16 +1726,19 @@ def run_generation(gen_id, base_population):
     print(color_text(f"[GEN {gen_id}] Crash rate: {crash_rate*100:.1f}% | Sys impacts: {system_impacts} | Avg length: {avg_length:.1f}", "cyan"))
     print(color_text(f"[GEN {gen_id}] Crash types: {dict(crash_types_counter.most_common(3))}", "cyan"))
 
-    pythonlogger.log_generation(
-        generation_id=gen_id,
-        population_size=len(base_population),
-        crash_rate=crash_rate,
-        system_impacts=system_impacts,
-        avg_shellcode_length=avg_length,
-        crash_types=dict(crash_types_counter),
-        attack_stats=dict(generation_attack_counter),
-        mutation_stats=dict(generation_mutation_counter)
-    )
+    try:
+        pythonlogger.log_generation(
+            generation_id=gen_id,
+            population_size=len(base_population),
+            crash_rate=crash_rate,
+            system_impacts=system_impacts,
+            avg_shellcode_length=avg_length,
+            crash_types=dict(crash_types_counter),
+            attack_stats=dict(generation_attack_counter),
+            mutation_stats=dict(generation_mutation_counter)
+        )
+    except Exception as e:
+        print(f"[WARNING] Error logging generation: {e}")
 
     # Actualizar métricas
     metrics["generations"].append(gen_id)
