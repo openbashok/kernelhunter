@@ -3,6 +3,8 @@
 Sistema de logging detallado para KernelHunter que registra métricas de rendimiento,
 permitiendo comparar la efectividad con y sin reinforcement learning.
 Guarda información detallada de cada generación, crashes, y métricas de diversidad.
+
+VERSIÓN CORREGIDA - Soluciona problemas de generación de archivos de log
 """
 
 import json
@@ -12,6 +14,7 @@ import time
 from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Any, Optional
+import random
 
 # Archivos de log
 PERFORMANCE_LOG_FILE = "kernelhunter_performance.json"
@@ -45,12 +48,43 @@ class PerformanceLogger:
             "performance_summary": {}
         }
         
-        # Inicializar archivo CSV si no existe
+        # Asegurar que los directorios existen
+        self._ensure_log_directories()
+        
+        # Inicializar archivo CSV inmediatamente
         self._init_csv_file()
+        
+        # Escribir log inicial para confirmar funcionamiento
+        self._save_initial_log()
+        
+        print(f"[PerformanceLogger] Inicializado para sesión: {self.session_name}")
+        print(f"[PerformanceLogger] Archivos de log:")
+        print(f"  - JSON: {PERFORMANCE_LOG_FILE}")
+        print(f"  - CSV: {PERFORMANCE_CSV_FILE}")
+        
+    def _ensure_log_directories(self):
+        """Asegura que los directorios necesarios existen."""
+        # Crear directorio de logs si no existe
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+            print(f"[PerformanceLogger] Creado directorio: {log_dir}")
+        
+    def _save_initial_log(self):
+        """Guarda un log inicial para confirmar funcionamiento."""
+        try:
+            with open(PERFORMANCE_LOG_FILE, 'w') as f:
+                json.dump(self.log_data, f, indent=2)
+            print(f"[PerformanceLogger] Archivo JSON inicial creado: {PERFORMANCE_LOG_FILE}")
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR al crear archivo JSON inicial: {e}")
         
     def set_rl_mode(self, use_rl: bool):
         """Establece si esta sesión usa reinforcement learning."""
         self.log_data["session_info"]["use_rl_weights"] = use_rl
+        print(f"[PerformanceLogger] Modo RL establecido: {use_rl}")
+        # Guardar inmediatamente el cambio
+        self._save_json_log()
         
     def log_generation(self, 
                       generation_id: int,
@@ -65,18 +99,6 @@ class PerformanceLogger:
                       diversity_metrics: Dict[str, float] = None):
         """
         Registra información detallada de una generación.
-        
-        Args:
-            generation_id: ID de la generación
-            population_size: Tamaño de la población
-            crash_rate: Tasa de crashes (0.0 - 1.0)
-            system_impacts: Número de impactos al sistema
-            avg_shellcode_length: Longitud promedio del shellcode
-            crash_types: Diccionario con tipos de crashes y sus conteos
-            attack_stats: Estadísticas de ataques usados
-            mutation_stats: Estadísticas de mutaciones usadas
-            rl_weights: Pesos de RL si están disponibles
-            diversity_metrics: Métricas de diversidad genética
         """
         generation_data = {
             "generation_id": generation_id,
@@ -99,12 +121,22 @@ class PerformanceLogger:
         self.log_data["generations"].append(generation_data)
         self.log_data["session_info"]["generations_completed"] = generation_id + 1
         
-        # Escribir a CSV para análisis rápido
-        self._write_csv_row(generation_data)
+        print(f"[PerformanceLogger] Registrada generación {generation_id}")
         
-        # Guardar archivo JSON completo cada 10 generaciones
-        if generation_id % 10 == 0:
-            self._save_json_log()
+        # Escribir a CSV inmediatamente
+        try:
+            self._write_csv_row(generation_data)
+            print(f"[PerformanceLogger] Fila CSV agregada para gen {generation_id}")
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR escribiendo CSV: {e}")
+        
+        # Guardar archivo JSON cada 5 generaciones para no saturar I/O
+        if generation_id % 5 == 0:
+            try:
+                self._save_json_log()
+                print(f"[PerformanceLogger] JSON guardado en generación {generation_id}")
+            except Exception as e:
+                print(f"[PerformanceLogger] ERROR guardando JSON: {e}")
             
     def log_crash_detail(self,
                         generation_id: int,
@@ -118,17 +150,6 @@ class PerformanceLogger:
                         mutation_type: str = None):
         """
         Registra detalles específicos de un crash.
-        
-        Args:
-            generation_id: ID de la generación
-            program_id: ID del programa que crasheó
-            shellcode_hex: Shellcode en hexadecimal
-            crash_type: Tipo de crash (SIGSEGV, SIGILL, etc.)
-            return_code: Código de retorno
-            system_impact: Si tuvo impacto a nivel de sistema
-            parent_shellcode_hex: Shellcode padre (opcional)
-            attack_type: Tipo de ataque usado (opcional)
-            mutation_type: Tipo de mutación usado (opcional)
         """
         crash_data = {
             "generation_id": generation_id,
@@ -146,6 +167,14 @@ class PerformanceLogger:
         
         self.log_data["crashes"].append(crash_data)
         
+        # Guardar crashes críticos inmediatamente
+        if system_impact:
+            try:
+                self._save_crash_detail_log()
+                print(f"[PerformanceLogger] Crash crítico registrado: {crash_type}")
+            except Exception as e:
+                print(f"[PerformanceLogger] ERROR guardando crash detail: {e}")
+        
     def log_rl_metrics(self,
                       generation_id: int,
                       attack_q_values: List[float],
@@ -156,15 +185,6 @@ class PerformanceLogger:
                       recent_rewards: Dict[str, float] = None):
         """
         Registra métricas específicas del reinforcement learning.
-        
-        Args:
-            generation_id: ID de la generación
-            attack_q_values: Valores Q para ataques
-            mutation_q_values: Valores Q para mutaciones
-            attack_counts: Conteos de ataques
-            mutation_counts: Conteos de mutaciones
-            epsilon: Valor actual de epsilon
-            recent_rewards: Recompensas recientes (opcional)
         """
         rl_data = {
             "generation_id": generation_id,
@@ -178,6 +198,7 @@ class PerformanceLogger:
         }
         
         self.log_data["rl_metrics"].append(rl_data)
+        print(f"[PerformanceLogger] Métricas RL registradas para gen {generation_id}")
         
     def log_diversity_metrics(self,
                              generation_id: int,
@@ -188,14 +209,6 @@ class PerformanceLogger:
                              genetic_health: str):
         """
         Registra métricas de diversidad genética.
-        
-        Args:
-            generation_id: ID de la generación
-            reservoir_size: Tamaño del reservoir genético
-            avg_diversity: Diversidad promedio
-            unique_instruction_types: Tipos únicos de instrucciones
-            length_variance: Varianza en la longitud de shellcodes
-            genetic_health: Estado de salud genética (string)
         """
         diversity_data = {
             "generation_id": generation_id,
@@ -208,11 +221,14 @@ class PerformanceLogger:
         }
         
         self.log_data["diversity_evolution"].append(diversity_data)
+        print(f"[PerformanceLogger] Diversidad registrada para gen {generation_id}")
         
     def finalize_session(self):
         """
         Finaliza la sesión y calcula métricas de resumen.
         """
+        print("[PerformanceLogger] Finalizando sesión...")
+        
         end_time = time.time()
         total_runtime = end_time - self.session_start
         
@@ -253,78 +269,129 @@ class PerformanceLogger:
                 }
             
             self.log_data["performance_summary"] = summary
+            print(f"[PerformanceLogger] Resumen calculado: {len(generations)} generaciones")
         
-        # Guardar log final
-        self._save_json_log()
-        self._save_crash_detail_log()
+        # Guardar todos los logs finales
+        try:
+            self._save_json_log()
+            print(f"[PerformanceLogger] Log JSON final guardado")
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR guardando log final JSON: {e}")
+            
+        try:
+            self._save_crash_detail_log()
+            print(f"[PerformanceLogger] Log de crashes guardado")
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR guardando log de crashes: {e}")
+        
+        print(f"[PerformanceLogger] Sesión finalizada. Runtime total: {total_runtime:.2f}s")
         
     def _init_csv_file(self):
         """Inicializa el archivo CSV con headers."""
-        if not os.path.exists(PERFORMANCE_CSV_FILE):
-            headers = [
-                "session_name", "generation_id", "timestamp", "runtime_seconds",
-                "use_rl", "population_size", "crash_rate", "system_impacts",
-                "avg_shellcode_length", "total_crashes", "unique_crash_types",
-                "diversity_avg", "epsilon"
-            ]
+        try:
+            # Verificar si el archivo ya existe
+            file_exists = os.path.exists(PERFORMANCE_CSV_FILE)
             
-            with open(PERFORMANCE_CSV_FILE, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(headers)
+            if not file_exists:
+                headers = [
+                    "session_name", "generation_id", "timestamp", "runtime_seconds",
+                    "use_rl", "population_size", "crash_rate", "system_impacts",
+                    "avg_shellcode_length", "total_crashes", "unique_crash_types",
+                    "diversity_avg", "epsilon"
+                ]
+                
+                with open(PERFORMANCE_CSV_FILE, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    
+                print(f"[PerformanceLogger] Archivo CSV creado con headers: {PERFORMANCE_CSV_FILE}")
+            else:
+                print(f"[PerformanceLogger] Archivo CSV existente encontrado: {PERFORMANCE_CSV_FILE}")
+                
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR inicializando CSV: {e}")
                 
     def _write_csv_row(self, generation_data):
         """Escribe una fila al archivo CSV."""
-        row = [
-            self.session_name,
-            generation_data["generation_id"],
-            generation_data["timestamp"],
-            generation_data["runtime_seconds"],
-            self.log_data["session_info"]["use_rl_weights"],
-            generation_data["population_size"],
-            generation_data["crash_rate"],
-            generation_data["system_impacts"],
-            generation_data["avg_shellcode_length"],
-            generation_data["total_crashes"],
-            generation_data["unique_crash_types"],
-            generation_data["diversity_metrics"].get("diversity_avg", 0),
-            generation_data["rl_weights"].get("epsilon", 0) if "rl_weights" in generation_data else 0
-        ]
-        
-        with open(PERFORMANCE_CSV_FILE, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(row)
+        try:
+            row = [
+                self.session_name,
+                generation_data["generation_id"],
+                generation_data["timestamp"],
+                generation_data["runtime_seconds"],
+                self.log_data["session_info"]["use_rl_weights"],
+                generation_data["population_size"],
+                generation_data["crash_rate"],
+                generation_data["system_impacts"],
+                generation_data["avg_shellcode_length"],
+                generation_data["total_crashes"],
+                generation_data["unique_crash_types"],
+                generation_data["diversity_metrics"].get("diversity_avg", 0) if generation_data["diversity_metrics"] else 0,
+                generation_data["rl_weights"].get("epsilon", 0) if generation_data["rl_weights"] else 0
+            ]
+            
+            with open(PERFORMANCE_CSV_FILE, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(row)
+                
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR escribiendo fila CSV: {e}")
+            raise
             
     def _save_json_log(self):
         """Guarda el log completo en formato JSON."""
-        with open(PERFORMANCE_LOG_FILE, 'w') as f:
-            json.dump(self.log_data, f, indent=2)
+        try:
+            # Crear backup si existe
+            if os.path.exists(PERFORMANCE_LOG_FILE):
+                backup_file = f"{PERFORMANCE_LOG_FILE}.backup"
+                try:
+                    import shutil
+                    shutil.copy2(PERFORMANCE_LOG_FILE, backup_file)
+                except:
+                    pass  # Ignorar errores de backup
+            
+            # Escribir nuevo archivo
+            with open(PERFORMANCE_LOG_FILE, 'w') as f:
+                json.dump(self.log_data, f, indent=2)
+                
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR guardando JSON: {e}")
+            raise
             
     def _save_crash_detail_log(self):
         """Guarda log detallado de crashes."""
-        crash_log = {
-            "session_name": self.session_name,
-            "crashes": self.log_data["crashes"],
-            "summary": {
-                "total_crashes": len(self.log_data["crashes"]),
-                "crash_types": Counter(c["crash_type"] for c in self.log_data["crashes"]),
-                "system_impacts": sum(1 for c in self.log_data["crashes"] if c["system_impact"])
+        try:
+            crash_log = {
+                "session_name": self.session_name,
+                "crashes": self.log_data["crashes"],
+                "summary": {
+                    "total_crashes": len(self.log_data["crashes"]),
+                    "crash_types": dict(Counter(c["crash_type"] for c in self.log_data["crashes"])),
+                    "system_impacts": sum(1 for c in self.log_data["crashes"] if c["system_impact"])
+                }
             }
-        }
-        
-        with open(CRASH_DETAIL_LOG, 'w') as f:
-            json.dump(crash_log, f, indent=2)
+            
+            with open(CRASH_DETAIL_LOG, 'w') as f:
+                json.dump(crash_log, f, indent=2)
+                
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR guardando crash detail: {e}")
+            raise
+
+    def force_save_all(self):
+        """Fuerza el guardado de todos los archivos de log."""
+        print("[PerformanceLogger] Forzando guardado de todos los logs...")
+        try:
+            self._save_json_log()
+            self._save_crash_detail_log()
+            print("[PerformanceLogger] Guardado forzado completado")
+        except Exception as e:
+            print(f"[PerformanceLogger] ERROR en guardado forzado: {e}")
 
 # Funciones de análisis y comparación
 def compare_rl_vs_no_rl(rl_session_file: str, no_rl_session_file: str):
     """
     Compara dos sesiones: una con RL y otra sin RL.
-    
-    Args:
-        rl_session_file: Archivo de la sesión con RL
-        no_rl_session_file: Archivo de la sesión sin RL
-        
-    Returns:
-        Dict con métricas comparativas
     """
     def load_session(filename):
         try:
@@ -378,12 +445,6 @@ def compare_rl_vs_no_rl(rl_session_file: str, no_rl_session_file: str):
 def generate_performance_report(session_file: str = None):
     """
     Genera un reporte de rendimiento detallado.
-    
-    Args:
-        session_file: Archivo de sesión específico (opcional)
-        
-    Returns:
-        String con el reporte formateado
     """
     if session_file and os.path.exists(session_file):
         with open(session_file, 'r') as f:
@@ -434,14 +495,18 @@ System Impact Trend: {trend.get('system_impact_trend', 0):+.1f}
     
     return report
 
-# Ejemplo de uso
-if __name__ == "__main__":
+def test_performance_logger():
+    """Función de test para verificar funcionamiento."""
+    print("=== TEST PERFORMANCE LOGGER ===")
+    
     # Crear logger para sesión de prueba
     logger = PerformanceLogger("test_session_rl")
     logger.set_rl_mode(True)
     
     # Simular algunas generaciones
     for gen in range(5):
+        print(f"\nRegistrando generación {gen}...")
+        
         logger.log_generation(
             generation_id=gen,
             population_size=100,
@@ -454,9 +519,40 @@ if __name__ == "__main__":
             rl_weights={"epsilon": 0.1, "learning_rate": 0.01},
             diversity_metrics={"diversity_avg": 0.6}
         )
+        
+        # Simular algunos crashes
+        if gen % 2 == 0:
+            logger.log_crash_detail(
+                generation_id=gen,
+                program_id=random.randint(0, 99),
+                shellcode_hex="4831c04889c2b0010f05",
+                crash_type="SIGSEGV",
+                return_code=-11,
+                system_impact=random.choice([True, False]),
+                attack_type="memory_access",
+                mutation_type="add"
+            )
     
     # Finalizar sesión
     logger.finalize_session()
     
-    print("Performance logging test completed!")
+    print("\n=== VERIFICANDO ARCHIVOS GENERADOS ===")
+    
+    # Verificar que los archivos se crearon
+    files_to_check = [PERFORMANCE_LOG_FILE, PERFORMANCE_CSV_FILE, CRASH_DETAIL_LOG]
+    
+    for file_path in files_to_check:
+        if os.path.exists(file_path):
+            size = os.path.getsize(file_path)
+            print(f"✓ {file_path} - {size} bytes")
+        else:
+            print(f"✗ {file_path} - NO ENCONTRADO")
+    
+    print("\n=== REPORTE GENERADO ===")
     print(generate_performance_report())
+    
+    return logger
+
+# Ejemplo de uso y test
+if __name__ == "__main__":
+    test_performance_logger()
