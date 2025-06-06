@@ -422,6 +422,8 @@ metrics = {
 # Counters for attack and mutation statistics per generation
 attack_counter = Counter()
 mutation_counter = Counter()
+total_attack_counter = Counter()  # Contador acumulativo total de ataques
+total_mutation_counter = Counter()  # Contador acumulativo total de mutaciones
 if USE_RL_WEIGHTS:
     metrics.setdefault("attack_weights_history", []).append(list(attack_q_values))
     metrics.setdefault("mutation_weights_history", []).append(list(mutation_q_values))
@@ -480,7 +482,7 @@ def remove_intermediate_exit_syscalls(shellcode):
 
 def generate_random_instruction():
     """Genera una instrucción aleatoria con mayor probabilidad de instrucciones interesantes"""
-    global last_attack_type
+    global last_attack_type, total_attack_counter
     if USE_RL_WEIGHTS:
         current_epsilon = get_epsilon(current_generation)
         choice_type = select_with_epsilon_greedy(ATTACK_OPTIONS, attack_q_values, current_epsilon)
@@ -488,8 +490,8 @@ def generate_random_instruction():
         choice_type = random.choices(ATTACK_OPTIONS, weights=attack_weights)[0]
     last_attack_type = choice_type
     attack_counter[choice_type] += 1
-    metrics.setdefault('attack_totals', {}).setdefault(choice_type, 0)
-    metrics['attack_totals'][choice_type] += 1
+    total_attack_counter[choice_type] += 1  # Nuevo: contador acumulativo
+    metrics.setdefault('attack_totals', {})[choice_type] = total_attack_counter[choice_type]
     write_metrics()
 
     if choice_type == "random_bytes":
@@ -931,7 +933,7 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
     # Asegurar que no hay EXIT_SYSCALL intermedios
     core = remove_intermediate_exit_syscalls(core)
 
-    global last_mutation_type
+    global last_mutation_type, total_mutation_counter
     if USE_RL_WEIGHTS:
         current_epsilon = get_epsilon(current_generation)
         mutation_type = select_with_epsilon_greedy(MUTATION_TYPES, mutation_q_values, current_epsilon)
@@ -939,7 +941,8 @@ def mutate_shellcode(shellcode, mutation_rate=0.8):
         mutation_type = random.choices(MUTATION_TYPES, weights=mutation_weights)[0]
     last_mutation_type = mutation_type
     mutation_counter[mutation_type] += 1
-    metrics.setdefault("mutation_totals", {})[mutation_type] = metrics["mutation_totals"].get(mutation_type, 0) + 1
+    total_mutation_counter[mutation_type] += 1  # Nuevo: contador acumulativo
+    metrics.setdefault("mutation_totals", {})[mutation_type] = total_mutation_counter[mutation_type]
     write_metrics()
 
     if mutation_type == "add" or not core:
