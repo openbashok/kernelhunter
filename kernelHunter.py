@@ -173,6 +173,10 @@ MUTATION_TYPES = [
 
 DEFAULT_MUTATION_WEIGHTS = [22, 12, 18, 18, 10, 8, 8, 4]
 
+# Totals used to keep weights balanced when reinforcement learning is enabled
+DEFAULT_ATTACK_WEIGHT_SUM = sum(DEFAULT_ATTACK_WEIGHTS)
+DEFAULT_MUTATION_WEIGHT_SUM = sum(DEFAULT_MUTATION_WEIGHTS)
+
 attack_weights = cfg.get("attack_weights") or DEFAULT_ATTACK_WEIGHTS.copy()
 if len(attack_weights) != len(ATTACK_OPTIONS):
     attack_weights = DEFAULT_ATTACK_WEIGHTS.copy()
@@ -348,6 +352,19 @@ def update_rl_weights():
         idx = mutation_index.get(name)
         if idx is not None:
             mutation_weights[idx] += count
+
+    # Rebalance weights to keep totals consistent
+    total_attack = sum(attack_weights)
+    if total_attack > 0:
+        scale = DEFAULT_ATTACK_WEIGHT_SUM / float(total_attack)
+        for i, w in enumerate(attack_weights):
+            attack_weights[i] = max(1, int(w * scale))
+
+    total_mutation = sum(mutation_weights)
+    if total_mutation > 0:
+        scale = DEFAULT_MUTATION_WEIGHT_SUM / float(total_mutation)
+        for i, w in enumerate(mutation_weights):
+            mutation_weights[i] = max(1, int(w * scale))
 
     metrics.setdefault("attack_weights_history", []).append(list(attack_weights))
     metrics.setdefault("mutation_weights_history", []).append(list(mutation_weights))
@@ -1259,6 +1276,7 @@ def run_generation(gen_id, base_population):
                     if USE_RL_WEIGHTS:
                         attack_success[last_attack_type] += 1
                         mutation_success[last_mutation_type] += 1
+                        update_rl_weights()
 
             # Manejar otros tipos de errores
             except subprocess.TimeoutExpired:
@@ -1274,6 +1292,7 @@ def run_generation(gen_id, base_population):
                 if USE_RL_WEIGHTS:
                     attack_success[last_attack_type] += 1
                     mutation_success[last_mutation_type] += 1
+                    update_rl_weights()
 
             except subprocess.CalledProcessError:
                 crash_type = "COMPILE_ERROR"
@@ -1286,6 +1305,7 @@ def run_generation(gen_id, base_population):
                 if USE_RL_WEIGHTS:
                     attack_success[last_attack_type] += 1
                     mutation_success[last_mutation_type] += 1
+                    update_rl_weights()
 
     # Asegurar que siempre hay población
     if not new_population:
@@ -1538,4 +1558,16 @@ def main():
         print("\nKernelHunter ha completado su ejecución.")
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="KernelHunter evolutionary fuzzer")
+    parser.add_argument("--use-rl-weights", action="store_true",
+                        help="enable reinforcement learning weight adjustments")
+    args = parser.parse_args()
+
+    if args.use_rl_weights:
+        USE_RL_WEIGHTS = True
+        attack_weights = DEFAULT_ATTACK_WEIGHTS.copy()
+        mutation_weights = DEFAULT_MUTATION_WEIGHTS.copy()
+
     main()
