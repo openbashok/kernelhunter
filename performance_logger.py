@@ -125,6 +125,7 @@ class PerformanceLogger:
         
         # Escribir a CSV inmediatamente
         try:
+            print(f"[PerformanceLogger][DEBUG] Llamando _write_csv_row con datos: {generation_data}")
             self._write_csv_row(generation_data)
             print(f"[PerformanceLogger] Fila CSV agregada para gen {generation_id}")
         except Exception as e:
@@ -326,14 +327,23 @@ class PerformanceLogger:
                 generation_data["avg_shellcode_length"],
                 generation_data["total_crashes"],
                 generation_data["unique_crash_types"],
-                generation_data["diversity_metrics"].get("diversity_avg", 0) if generation_data["diversity_metrics"] else 0,
-                generation_data["rl_weights"].get("epsilon", 0) if generation_data["rl_weights"] else 0
+                generation_data.get("diversity_metrics", {}).get("diversity_avg", 0),
+                generation_data.get("rl_weights", {}).get("epsilon", 0)
             ]
-            
+
+            if not os.path.exists(PERFORMANCE_CSV_FILE):
+                print("[PerformanceLogger][DEBUG] CSV no existe, reinicializando...")
+                self._init_csv_file()
+
             with open(PERFORMANCE_CSV_FILE, 'a', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow(row)
-                
+                f.flush()
+                os.fsync(f.fileno())
+
+            size = os.path.getsize(PERFORMANCE_CSV_FILE)
+            print(f"[PerformanceLogger][DEBUG] Fila escrita. Tama\u00f1o del CSV: {size} bytes")
+
         except Exception as e:
             print(f"[PerformanceLogger] ERROR escribiendo fila CSV: {e}")
             raise
