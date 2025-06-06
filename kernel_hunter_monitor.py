@@ -82,21 +82,21 @@ class KernelHunterMonitor:
         return False
     
     def load_metrics(self):
-        """Load metrics from the metrics file"""
+        """Load metrics from the metrics file - VERSIÓN CORREGIDA"""
         try:
             if os.path.exists(METRICS_FILE):
                 with open(METRICS_FILE, 'r') as f:
                     data = json.load(f)
-                    
-                # Update our metrics with the file data
+
+                # Usar directamente los valores correctos del archivo JSON
                 for key, value in data.items():
                     if key in self.metrics:
                         self.metrics[key] = value
-                
+
                 # Set latest generation
                 if self.metrics["generations"]:
                     self.metrics["latest_gen"] = max(self.metrics["generations"])
-                
+
                 return True
         except Exception as e:
             return False
@@ -152,78 +152,6 @@ class KernelHunterMonitor:
             return 0
         except Exception:
             return 0
-    
-    def scan_crash_log(self):
-        """Scan the crash log file for latest crash information"""
-        try:
-            if os.path.exists(CRASH_LOG):
-                with open(CRASH_LOG, 'r') as f:
-                    content = f.read()
-                    
-                    # Find the last generation section
-                    gen_sections = re.findall(r'\[GEN (\d+)\]', content)
-                    if gen_sections:
-                        latest_gen = max([int(g) for g in gen_sections])
-                        self.metrics["latest_gen"] = max(latest_gen, self.metrics["latest_gen"])
-                        
-                        # Find the crash types for this generation
-                        latest_section = re.search(rf'\[GEN {latest_gen}\].*?(?=\[GEN|\Z)', content, re.DOTALL)
-                        if latest_section:
-                            section_text = latest_section.group(0)
-                            
-                            # Count different crash types
-                            crash_types = {}
-                            for line in section_text.splitlines():
-                                if "Crash" in line:
-                                    crash_type = "UNKNOWN"
-                                    if "SIGNAL_" in line:
-                                        # Extract signal type
-                                        signal_match = re.search(r'SIGNAL_(\w+)', line)
-                                        if signal_match:
-                                            crash_type = f"SIGNAL_{signal_match.group(1)}"
-                                    elif "exit code" in line:
-                                        # Extract exit code
-                                        exit_match = re.search(r'exit code (\d+)', line)
-                                        if exit_match:
-                                            crash_type = f"EXIT_{exit_match.group(1)}"
-                                    elif "TIMEOUT" in line:
-                                        crash_type = "TIMEOUT"
-                                    elif "COMPILATION ERROR" in line:
-                                        crash_type = "COMPILE_ERROR"
-                                        
-                                    if crash_type in crash_types:
-                                        crash_types[crash_type] += 1
-                                    else:
-                                        crash_types[crash_type] = 1
-                            
-                            # Update or add to crash types
-                            if crash_types:
-                                self.metrics["crash_types"][str(latest_gen)] = crash_types
-                            
-                            # Count system impacts
-                            system_impacts = section_text.count("[SYSTEM IMPACT]")
-                            
-                            # Update system impacts if we have enough generations
-                            if latest_gen >= len(self.metrics["system_impacts"]):
-                                while len(self.metrics["system_impacts"]) <= latest_gen:
-                                    self.metrics["system_impacts"].append(0)
-                                self.metrics["system_impacts"][latest_gen] = system_impacts
-                            
-                            # Count crashes
-                            crash_count = section_text.count("Crash ")
-                            total_count = len(re.findall(r'Shellcode:', section_text))
-                            
-                            # Update crash rate
-                            if total_count > 0:
-                                crash_rate = crash_count / total_count
-                                
-                                if latest_gen >= len(self.metrics["crash_rates"]):
-                                    while len(self.metrics["crash_rates"]) <= latest_gen:
-                                        self.metrics["crash_rates"].append(0)
-                                    self.metrics["crash_rates"][latest_gen] = crash_rate
-        except Exception as e:
-            # Just ignore errors in this part
-            pass
     
     def scan_survivor_log(self):
         """Scan the survivor log for latest population information"""
@@ -332,32 +260,32 @@ class KernelHunterMonitor:
                     self.metrics["genetic_diversity"] = normalized_range
     
     def update_metrics(self):
-        """Update all metrics from all possible sources"""
+        """Update all metrics from all possible sources - VERSIÓN CORREGIDA"""
         # First, clear any stale cached data
         self.metrics["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Load metrics from the metrics file - first priority
+
+        # Load metrics from the metrics file - ÚNICA FUENTE DE VERDAD
         self.load_metrics()
-        
+
         # Try to load the genetic reservoir for diversity stats
         reservoir_loaded = self.load_reservoir()
-        
+
         # Scan files to get additional information
         self.count_critical_crashes()
         self.estimate_population_size()
-        
-        # Check kernelhunter_crashes.txt for the latest crash info
-        self.scan_crash_log()
-        
+
+        # NO LLAMAR A scan_crash_log() - ELIMINADO
+        # self.scan_crash_log()  # <-- COMENTAR ESTA LÍNEA
+
         # Scan survivor log to get more accurate population data
         self.scan_survivor_log()
-        
+
         # Calculate system health based on crash patterns
         self.metrics["system_health"] = self.get_system_health()
-        
+
         # Estimate genetic diversity from available data
         self.estimate_genetic_diversity()
-        
+
         # Force a refresh of latest generation count if needed
         self.check_latest_generation()
     
