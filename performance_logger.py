@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 """
-Module: performance_logger.py
-
-Description:
 Sistema de logging detallado para KernelHunter que registra métricas de rendimiento,
 permitiendo comparar la efectividad con y sin reinforcement learning.
 Guarda información detallada de cada generación, crashes, y métricas de diversidad.
