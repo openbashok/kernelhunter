@@ -181,14 +181,14 @@ current_generation = 0
 individual_zero_crash_counts = {}
 MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS = effective_config.get('stagnation_limit', 20)
 
-# Initialize global variables with default configuration
-initialize_global_variables(effective_config)
-
 # Genetic reservoir
 genetic_reservoir = GeneticReservoir()
 
 # Performance logging
 pythonlogger = None
+
+# Initialize global variables with default configuration
+initialize_global_variables(effective_config)
 
 # Instancias de módulos avanzados
 ml_engine = None
