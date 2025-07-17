@@ -68,7 +68,7 @@ trap cleanup SIGINT
 # Iniciar servidor PHP
 echo "🌐 Starting PHP backend server..."
 cd web_api
-php -S localhost:8000 ../index.php &
+php -S localhost:8000 index.php &
 PHP_PID=$!
 cd ..
 
