@@ -66,16 +66,16 @@ except Exception as e:
         'max_memory_mb': 512
     }
 
-# Configuración global
+# Variables globales que se inicializarán después de cargar configuración
 OUTPUT_DIR = "kernelhunter_generations"
-NUM_PROGRAMS = effective_config.get('population_size', 50)
-MAX_GENERATIONS = effective_config.get('max_generations', 1000)
-TIMEOUT = effective_config.get('max_execution_time', 3)
+NUM_PROGRAMS = None
+MAX_GENERATIONS = None
+TIMEOUT = None
 LOG_FILE = "kernelhunter_survivors.txt"
 CRASH_LOG = "kernelhunter_crashes.txt"
-METRICS_FILE = effective_config.get('metrics_file', "kernelhunter_metrics.json")
+METRICS_FILE = None
 CHECKPOINT_INTERVAL = 10
-MAX_POPULATION_SIZE = effective_config.get('population_size', 1000)
+MAX_POPULATION_SIZE = None
 NATURAL_SELECTION_MODE = True
 
 # Crear directorios necesarios
@@ -181,6 +181,9 @@ current_generation = 0
 individual_zero_crash_counts = {}
 MAX_INDIVIDUAL_ZERO_CRASH_GENERATIONS = effective_config.get('stagnation_limit', 20)
 
+# Initialize global variables with default configuration
+initialize_global_variables(effective_config)
+
 # Genetic reservoir
 genetic_reservoir = GeneticReservoir()
 
@@ -207,6 +210,17 @@ ANSI_COLORS = {
 def color_text(text, color):
     """Return text wrapped in ANSI color codes."""
     return f"{ANSI_COLORS.get(color, '')}{text}{ANSI_COLORS['reset'] if color else ''}"
+
+def initialize_global_variables(config_dict):
+    """Initialize global variables based on configuration"""
+    global NUM_PROGRAMS, MAX_GENERATIONS, TIMEOUT, METRICS_FILE, MAX_POPULATION_SIZE, USE_RL_WEIGHTS
+    
+    NUM_PROGRAMS = config_dict.get('population_size', 50)
+    MAX_GENERATIONS = config_dict.get('max_generations', 100)
+    TIMEOUT = config_dict.get('max_execution_time', 3)
+    METRICS_FILE = config_dict.get('metrics_file', "kernelhunter_metrics.json")
+    MAX_POPULATION_SIZE = config_dict.get('population_size', 1000)
+    USE_RL_WEIGHTS = config_dict.get('enable_rl', False)
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
@@ -867,17 +881,10 @@ async def main():
         except Exception as e:
             print(f"⚠️ Error cargando configuración desde {args.config}: {e}")
     
+    # Initialize global variables based on effective_config
+    initialize_global_variables(effective_config)
+    
     print(color_text("🚀 KernelHunter Advanced - Iniciando...", "green"))
-    
-    # Update global variables based on effective_config
-    global NUM_PROGRAMS, MAX_GENERATIONS, TIMEOUT, METRICS_FILE, MAX_POPULATION_SIZE, USE_RL_WEIGHTS
-    
-    NUM_PROGRAMS = effective_config.get('population_size', 50)
-    MAX_GENERATIONS = effective_config.get('max_generations', 100)
-    TIMEOUT = effective_config.get('max_execution_time', 3)
-    METRICS_FILE = effective_config.get('metrics_file', "kernelhunter_metrics.json")
-    MAX_POPULATION_SIZE = effective_config.get('population_size', 1000)
-    USE_RL_WEIGHTS = effective_config.get('enable_rl', False)
     
     # Initialize advanced modules
     initialize_advanced_modules()
