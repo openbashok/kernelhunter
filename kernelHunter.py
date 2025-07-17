@@ -13,6 +13,7 @@ import json
 import asyncio
 import concurrent.futures
 import multiprocessing
+import argparse
 from random import randint, choice
 from collections import Counter, defaultdict, deque
 from genetic_reservoir import GeneticReservoir
@@ -842,9 +843,41 @@ def print_shellcode_hex(shellcode, escape_format=False):
 
 async def main():
     """Main function with advanced features"""
-    global pythonlogger, genetic_reservoir
+    global pythonlogger, genetic_reservoir, effective_config
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='KernelHunter Advanced - Fuzzer evolutivo')
+    parser.add_argument('--advanced', action='store_true', help='Habilitar características avanzadas')
+    parser.add_argument('--config', type=str, help='Archivo de configuración JSON')
+    args = parser.parse_args()
+    
+    # Load configuration from file if specified
+    if args.config and os.path.exists(args.config):
+        try:
+            with open(args.config, 'r') as f:
+                config_data = json.load(f)
+            
+            # Update effective_config with file configuration
+            if 'local' in config_data:
+                effective_config.update(config_data['local'])
+                print(f"✅ Configuración cargada desde: {args.config}")
+                print(f"  - Generaciones máximas: {effective_config.get('max_generations', 'N/A')}")
+                print(f"  - Tamaño de población: {effective_config.get('population_size', 'N/A')}")
+                print(f"  - Tasa de mutación: {effective_config.get('mutation_rate', 'N/A')}")
+        except Exception as e:
+            print(f"⚠️ Error cargando configuración desde {args.config}: {e}")
     
     print(color_text("🚀 KernelHunter Advanced - Iniciando...", "green"))
+    
+    # Update global variables based on effective_config
+    global NUM_PROGRAMS, MAX_GENERATIONS, TIMEOUT, METRICS_FILE, MAX_POPULATION_SIZE, USE_RL_WEIGHTS
+    
+    NUM_PROGRAMS = effective_config.get('population_size', 50)
+    MAX_GENERATIONS = effective_config.get('max_generations', 100)
+    TIMEOUT = effective_config.get('max_execution_time', 3)
+    METRICS_FILE = effective_config.get('metrics_file', "kernelhunter_metrics.json")
+    MAX_POPULATION_SIZE = effective_config.get('population_size', 1000)
+    USE_RL_WEIGHTS = effective_config.get('enable_rl', False)
     
     # Initialize advanced modules
     initialize_advanced_modules()
