@@ -187,9 +187,6 @@ genetic_reservoir = GeneticReservoir()
 # Performance logging
 pythonlogger = None
 
-# Initialize global variables with default configuration
-initialize_global_variables(effective_config)
-
 # Instancias de módulos avanzados
 ml_engine = None
 performance_optimizer = None
@@ -221,6 +218,9 @@ def initialize_global_variables(config_dict):
     METRICS_FILE = config_dict.get('metrics_file', "kernelhunter_metrics.json")
     MAX_POPULATION_SIZE = config_dict.get('population_size', 1000)
     USE_RL_WEIGHTS = config_dict.get('enable_rl', False)
+
+# Initialize global variables with default configuration
+initialize_global_variables(effective_config)
 
 def format_shellcode_c_array(shellcode_bytes):
     return ','.join(f'0x{b:02x}' for b in shellcode_bytes)
