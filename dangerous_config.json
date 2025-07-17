@@ -1,0 +1,49 @@
+{
+  "local": {
+    "max_generations": 5000,
+    "population_size": 200,
+    "mutation_rate": 0.4,
+    "crossover_rate": 0.7,
+    "elite_size": 15,
+    "stagnation_limit": 50,
+    "enable_rl": true,
+    "enable_web_interface": true,
+    "web_port": 8080,
+    "log_level": "INFO",
+    "save_crashes": true,
+    "crash_dir": "./crashes",
+    "metrics_file": "./metrics.json",
+    "gene_bank_file": "./gene_bank.json",
+    "enable_advanced_features": true,
+    "enable_ml": true,
+    "enable_analytics": true,
+    "enable_security_sandbox": false,
+    "sandbox_isolation_level": "none",
+    "max_execution_time": 10,
+    "max_memory_mb": 2048
+  },
+  "distributed": {
+    "enable_distributed": false,
+    "central_api_url": "http://localhost:5000",
+    "node_id": null,
+    "max_workers": 8,
+    "sync_interval": 30,
+    "heartbeat_interval": 60,
+    "crash_upload_enabled": true,
+    "metrics_upload_enabled": true
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "kernelhunter",
+    "username": "kernelhunter",
+    "password": "",
+    "pool_size": 20
+  },
+  "monitoring": {
+    "prometheus_port": 9090,
+    "grafana_port": 3000,
+    "enable_telemetry": true,
+    "log_retention_days": 30
+  }
+} 

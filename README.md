@@ -1,240 +1,428 @@
-# KernelHunter
+# KernelHunter - Fuzzer Evolutivo Avanzado
 
-**KernelHunter** is an evolutionary fuzzer designed to discover crashes and vulnerabilities in operating systems by generating and executing x86_64 shellcodes. Unlike traditional fuzzers, KernelHunter uses a genetic algorithm approach to mutate and select the most effective shellcodes over multiple generations.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Advanced Features](https://img.shields.io/badge/Advanced-ML%20%7C%20Analytics%20%7C%20Security-green.svg)](https://github.com/your-repo/kernelhunter)
 
----
+## 🚀 Visión General
 
-## What KernelHunter Does
+KernelHunter es un fuzzer evolutivo de última generación que combina técnicas avanzadas de machine learning, analytics en tiempo real, sandboxing de seguridad y orquestación distribuida para descubrir vulnerabilidades en sistemas operativos.
 
-KernelHunter operates by generating random shellcodes, compiling and executing them in a controlled environment, and analyzing the results for crashes and anomalies. It captures low-level execution failures such as segmentation faults (SIGSEGV), illegal instructions (SIGILL), floating-point exceptions (SIGFPE), and traps (SIGTRAP), classifying and prioritizing them based on severity and impact.
+### 🎯 Características Principales
 
-What sets KernelHunter apart is its evolutionary engine. Rather than relying on blind mutation, it evolves shellcodes across generations, favoring those that cause the most interesting system-level behaviors. This makes it especially effective for identifying edge-case vulnerabilities that are often missed by traditional fuzzers.
+- **🤖 Machine Learning Avanzado**: DQN, Policy Gradient, Transformers
+- **⚡ Optimización de Rendimiento**: Procesamiento asíncrono, cache inteligente
+- **📊 Analytics en Tiempo Real**: Stream processing, dashboards interactivos
+- **🔥 Ejecución Directa**: Sin sandbox por defecto para encontrar vulnerabilidades reales
+- **☸️ Orquestación Distribuida**: Kubernetes, service mesh, auto-scaling
 
----
+## 🛠️ Instalación Rápida
 
-## Key Features
-
-- Generation and mutation of x86_64 shellcodes
-- Safe execution of binaries with timeout control
-- Crash capture and classification: SIGSEGV, SIGILL, SIGFPE, SIGTRAP
-- Detection of potential system-level impacts (e.g., critical signal patterns)
-- Per-generation statistical analysis:
-  - Crash rate
-  - Average shellcode length
-  - Most frequent byte patterns
-- Structured JSON output for crash metadata
-- Post-run analysis of critical crash segments
-- Demo mode for reproducible runs and showcases
-
----
-
-## Why It's Useful
-
-KernelHunter provides a practical, autonomous approach to exploring how low-level input (shellcode) can destabilize an operating system or uncover flaws in the kernel’s memory handling. It’s ideal for:
-
-- Security researchers looking for novel syscall-level bugs
-- Kernel developers stress-testing system behavior
-- Offensive security professionals creating realistic crash-based PoCs
-- Dataset generation for ML-based exploit detection models
-
-Because it doesn't rely on any hardcoded corpus or known exploit templates, KernelHunter can produce previously unseen shellcode patterns that lead to real impact. This positions it as a creative tool in vulnerability discovery pipelines.
-
----
-
-
-## Installation
-
-KernelHunter is a standalone Python script and can be installed without root access.
-
-> ⚠️ **WARNING:** It is strongly recommended to **never run KernelHunter as root**. Fuzzing shellcode with elevated privileges can lead to complete system compromise.
-
-### Step-by-step Installation
+### Instalación Automática (Recomendada)
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/openbashok/kernelhunter
+# Clonar repositorio
+git clone https://github.com/your-repo/kernelhunter.git
 cd kernelhunter
 
-# 2. Run the installer (no root required)
-python install_kernelhunter.py
-#    (you will be asked for your OpenAI API key)
-
-# 3. (Optional) Restart your terminal or run:
-source ~/.bashrc
-
-# 4. Run it from anywhere:
-kernelhunter
+# Instalación completa con características avanzadas
+python3 setup_advanced.py
 ```
-The previous `install_kernelhunter.sh` script is now deprecated.
 
-After installation, KernelHunter will be available under `~/.local/bin/kernelhunter` for the current user. During installation you can choose whether the configuration is stored globally in `/etc/kernelhunter` or locally in `~/.config/kernelhunter`.
-The installer will also create an empty genetic reservoir if none is present.
-
-If you choose a **global** installation, this reservoir lives in
-`/var/lib/kernelhunter/reservoir` and the directory is created with mode
-`1777`, allowing all users to write to it (similar to `/tmp`). This makes the
-reservoir shared across accounts but may not be desirable in hardened
-environments. A **local** installation (`--scope local`) keeps the reservoir
-private under your home directory.
-
-## Configuration
-
-KernelHunter keeps its configuration in either `/etc/kernelhunter/config.json` or
-`~/.config/kernelhunter/config.json` depending on your installation choice. The
-file is created automatically during installation and can be inspected with:
+### Instalación Manual
 
 ```bash
-$ python kernelhunter_config.py --show
+# Dependencias básicas
+sudo apt-get update
+sudo apt-get install -y build-essential python3-dev python3-pip git curl wget
+
+# Entorno Python
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements_advanced.txt
+
+# Configurar servicios
+sudo systemctl start docker
+sudo usermod -aG docker $USER
 ```
 
-The configuration contains the path to the genetic reservoir directory and the
-OpenAI API key used by the analysis modules. You can update these values with:
+## 🎮 Uso
+
+### Ejecución Básica
 
 ```bash
-# Use sudo only if modifying the global configuration
-python kernelhunter_config.py --reservoir-path /custom/reservoir
-python kernelhunter_config.py --api-key YOUR_OPENAI_KEY
+# Modo básico
+python3 kernelHunter.py
+
+# Con características avanzadas
+python3 run_kernelhunter_advanced.py
+
+# Con configuración personalizada
+python3 run_kernelhunter_advanced.py --config my_config.json
 ```
 
-The `OPENAI_API_KEY` environment variable still takes precedence over the value
-stored in the configuration file.
-
-To enable the experimental reinforcement learning mode that adapts attack and
-mutation probabilities over time, set the `use_rl_weights` flag:
+### Opciones Avanzadas
 
 ```bash
-python kernelhunter_config.py --use-rl-weights
-# Optionally provide custom starting weights
-python kernelhunter_config.py --attack-weights 2,1,1,6,5,...
-python kernelhunter_config.py --mutation-weights 22,12,18,18,10,8,8,4
+# Modo distribuido
+python3 run_kernelhunter_advanced.py --mode distributed --node-id worker-1
+
+# Configuración personalizada
+python3 run_kernelhunter_advanced.py --port 9000 --generations 2000 --population 200
+
+# Deshabilitar características específicas
+python3 run_kernelhunter_advanced.py --no-ml --no-analytics --no-sandbox
+
+# Nivel de aislamiento
+python3 run_kernelhunter_advanced.py --isolation vm
 ```
 
-Alternatively, you can enable RL directly when running the fuzzer:
+### Docker
 
 ```bash
-python kernelHunter.py --use-rl-weights
+# Construir y ejecutar
+docker build -t kernelhunter:latest .
+docker run -d --name kernelhunter -p 8080:8080 kernelhunter:latest
+
+# Con Docker Compose
+docker-compose up -d
 ```
 
-When invoked with this flag, KernelHunter starts with the default weights and
-uses a sliding window to track recent rewards. Attack and mutation selections
-follow an epsilon-greedy strategy to balance exploration and exploitation. The
-weights are updated according to the observed success rate and a learning rate.
+## 📊 Monitoreo y Analytics
 
-Updated weights are recorded in `kernelhunter_metrics.json` after each
-generation.
+### Dashboard Web
+- **URL**: http://localhost:8080
+- **Características**: Métricas en tiempo real, control de generaciones, análisis de crashes
 
+### Grafana
+- **URL**: http://localhost:3000
+- **Características**: Dashboards personalizables, alertas, análisis histórico
 
+### Prometheus
+- **URL**: http://localhost:9090
+- **Características**: Métricas de rendimiento, consultas personalizadas
 
-## Quick Start
+## ⚙️ Configuración
+
+### Archivo de Configuración
+
+```json
+{
+  "local": {
+    "max_generations": 1000,
+    "population_size": 100,
+    "mutation_rate": 0.3,
+    "enable_rl": true,
+    "enable_ml": true,
+    "enable_analytics": true,
+    "enable_security_sandbox": true,
+    "sandbox_isolation_level": "container"
+  }
+}
+```
+
+### Variables de Entorno
 
 ```bash
-$ python kernelhunter.py
+# Configuración básica
+KH_EXECUTION_MODE=local
+KH_LOG_LEVEL=INFO
+
+# Base de datos
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=kernelhunter
+
+# ML y Analytics
+OPENAI_API_KEY=your_key_here
+TORCH_DEVICE=cuda
+
+# Seguridad
+SANDBOX_ISOLATION_LEVEL=container
+MAX_EXECUTION_TIME=30
 ```
 
+## 🤖 Machine Learning
 
+### Modelos Disponibles
 
+1. **DQN (Deep Q-Network)**
+   - Selección inteligente de estrategias de ataque
+   - Optimización de recompensas
+   - Aprendizaje continuo
 
-## Sample Output
+2. **Policy Gradient**
+   - Optimización de mutaciones
+   - Generación de shellcodes
+   - Adaptación dinámica
 
-```text
-kernelhunter@localhost:~/demo2$ kernelhunter
+3. **Transformers**
+   - Generación de shellcodes
+   - Análisis de patrones
+   - Predicción de crashes
 
-  _  __                    _   _   _             _
- | |/ /___ _ __ _ __   ___| | | | | |_   _ _ __ | |_ ___ _ __
- | ' // _ \ '__| '_ \ / _ \ | | |_| | | | | '_ \| __/ _ \ '__|
- | . \  __/ |  | | | |  __/ | |  _  | |_| | | | | ||  __/ |
- |_|\_\___|_|  |_| |_|\___|_| |_| |_|\__,_|_| |_|\__\___|_|
+### Uso de ML
 
- Fuzzer evolutivo para vulnerabilidades del sistema operativo
- -------------------------------------------------------------
+```python
+from advanced_ml_engine import get_ml_engine
 
-Configuración: 20 programas por generación, timeout: 3s
+# Obtener motor ML
+ml_engine = get_ml_engine()
 
-Generación 0/10000 (población: 1)
-Crash 0000: SIGSEGV | Shellcode: 3348c7c03c0000004831ff0f05
-Crash 0001: SIGSEGV | Shellcode: 488bd377
-Crash 0002: SIGSEGV | Shellcode: 4831d284674548c7c03c0000004831ff0f05
-Crash 0004: SIGSEGV | Shellcode: 4831c9de
-Crash 0006: SIGSEGV | Shellcode: 5aed48c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0007: SIGILL | Shellcode: e1f6475136d648c7c03c0000004831ff0f05
-Crash 0008: SIGSEGV | Shellcode: 709a0848c7c03c0000004831ff0f05
-Crash 0010: SIGSEGV | Shellcode: 48c7c080
-Crash 0011: SIGSEGV | Shellcode: b8eb1f48c7c03c0000004831ff0f05
-Crash 0012: SIGSEGV | Shellcode: 4889b448c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0013: SIGILL | Shellcode: 4831ff5716577c
-Crash 0014: SIGSEGV | Shellcode: 4831d2e2f5
-Crash 0015: SIGSEGV | Shellcode: a0ff48c7c03c0000004831ff0f05
-Crash 0017: SIGSEGV | Shellcode: 4d31c9a30348c7c03c0000004831ff0f05
-Crash 0018: SIGSEGV | Shellcode: ff36
-[GEN 0] Crash rate: 75.0% | Sys impacts: 2 | Avg length: 12.2
-[GEN 0] Crash types: {'SIGNAL_SIGSEGV': 13, 'SIGNAL_SIGILL': 2}
+# Entrenar modelos
+ml_engine.train_dqn()
+ml_engine.train_policy(states, actions, rewards)
 
-Generación 1/10000 (población: 5)
-Crash 0000: SIGSEGV | Shellcode: 5d0bc520a8cb1d3f0a48c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0001: SIGILL | Shellcode: 37a4630f0548c7c03c0000004831ff0f05
-Crash 0004: SIGSEGV | Shellcode: b80bc548c7c03c0000004831ff0f05
-Crash 0005: SIGSEGV | Shellcode: 5d0bb6ffff7c28f2c548c7c03c0000004831ff0f05
-Crash 0007: SIGSEGV | Shellcode: 488b02515d0bc548c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0008: SIGILL | Shellcode: 56ba4831d2a416b8ee8c20e848c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0010: SIGILL | Shellcode: 2f2e540d626e0f0548c7c03c0000004831ff0f05
-Crash 0011: SIGSEGV | Shellcode: 484d31c9cfd0cf31d20cddf248c7c03c0000004831ff0f05
-Crash 0012: SIGSEGV | Shellcode: 0f05cd80
-[SYSTEM IMPACT] Crash 0013: SIGILL | Shellcode: 60c37face50f0548c7c03c0000004831ff0f05
-[SYSTEM IMPACT] Crash 0014: SIGILL | Shellcode: 0fb94f05
-Crash 0015: SIGSEGV | Shellcode: 4831ffdd0f0548c7c03c0000004831ff0f05
-Crash 0016: SIGSEGV | Shellcode: e4750e2b8b4831d20cddf248c7c03c0000004831ff0f05
-Crash 0017: SIGSEGV | Shellcode: 56ba4831ff00542e8c20e8
-Crash 0018: SIGSEGV | Shellcode: 56ba8c204d31c99b2258e848c7c03c0000004831ff0f05
-Crash 0019: SIGSEGV | Shellcode: 765d0bc548c7c03c0000004831ff0f05
-[GEN 1] Crash rate: 80.0% | Sys impacts: 5 | Avg length: 17.8
-[GEN 1] Crash types: {'SIGNAL_SIGSEGV': 11, 'SIGNAL_SIGILL': 5}
+# Generar shellcodes
+shellcode = ml_engine.generate_shellcode_transformer(seed, max_length=64)
 ```
 
+## 🔥 Ejecución Directa (Por Defecto)
 
+### Modo Sin Sandbox
 
+1. **Ejecución Directa**
+   - Shellcodes se ejecutan directamente en el sistema
+   - Sin aislamiento ni protección
+   - Búsqueda de vulnerabilidades reales
 
+2. **Detección de Crashes Reales**
+   - Crashes del kernel real
+   - Impacto directo al sistema
+   - Vulnerabilidades genuinas
 
-## Menu interface
+3. **Análisis de Exploits**
+   - Exploits que funcionan en el sistema real
+   - No simulaciones ni sandbox
+   - Resultados auténticos
 
-KernelHunter includes a curses-based menu for launching the different tools. Start it with:
+### Configuración de Ejecución Directa
+
+```python
+# Por defecto, KernelHunter ejecuta sin sandbox
+# Los shellcodes se ejecutan directamente en el sistema
+
+# Si quieres habilitar sandbox (opcional):
+# effective_config['enable_security_sandbox'] = True
+# effective_config['sandbox_isolation_level'] = 'container'
+```
+
+## ☸️ Kubernetes
+
+### Despliegue
 
 ```bash
-python menu.py
+# Crear namespace
+kubectl apply -f k8s-namespace.yaml
+
+# Desplegar aplicación
+kubectl apply -f k8s-deployment.yaml
+
+# Exponer servicio
+kubectl apply -f k8s-service.yaml
 ```
 
-Use the arrow keys and Enter to select one of the following options:
-
-- Run KernelHunter Fuzzer
-- Crash Explorer
-- Reservoir Manager
-- KernelHunter Monitor
-- Attack/Mutation Stats
-- Kernel Error Dashboard
-- Quit
-
-When a tool exits you will be returned to the menu.
-
-## OllyDbg-style interface
-
-For a split-screen view inspired by OllyDbg, use the alternative menu:
+### Escalado
 
 ```bash
-python ollydbg_menu.py
+# Escalar horizontalmente
+kubectl scale deployment kernelhunter --replicas=10 -n kernelhunter
+
+# Auto-scaling
+kubectl autoscale deployment kernelhunter --cpu-percent=80 --min=2 --max=20
 ```
 
-The left panel lists available tools and the right panel shows their output.
-Use the arrow keys to navigate, Enter to run the selected tool, and `q` to quit.
+## 📈 Performance
 
-## tmux launcher
+### Optimizaciones
 
-The repository includes `tmux_launcher.sh` for quickly opening the monitoring tools in a grid of tmux panes. It requires `tmux` to be installed on your system.
+- **Procesamiento Asíncrono**: uvloop para mejor rendimiento
+- **Cache Inteligente**: Cache de shellcodes y resultados
+- **Optimización de Memoria**: Garbage collection optimizado
+- **Paralelización**: Workers dinámicos y queue management
 
-Run it from the repository root with:
+### Benchmarks
 
 ```bash
-./tmux_launcher.sh
+# Ejecutar benchmarks
+python3 -m pytest tests/test_performance.py -v
+
+# Profiling
+python3 -m cProfile -o profile.stats kernelHunter.py
 ```
 
-This will start the KernelHunter monitor, the reservoir UI, the crash UI, and the dashboard in one tmux session arranged in two columns.
+## 🧪 Testing
+
+```bash
+# Tests unitarios
+python3 -m pytest tests/ -v
+
+# Tests de integración
+python3 -m pytest tests/integration/ -v
+
+# Tests de performance
+python3 -m pytest tests/performance/ -v
+
+# Tests de seguridad
+python3 -m pytest tests/security/ -v
+
+# Cobertura
+python3 -m pytest --cov=kernelHunter tests/
+```
+
+## 📚 Documentación
+
+- **[Documentación Avanzada](README_ADVANCED.md)**: Guía completa con todas las características
+- **[API Reference](docs/api.md)**: Documentación de la API REST
+- **[Ejemplos](examples/)**: Ejemplos de uso y configuración
+- **[Troubleshooting](docs/troubleshooting.md)**: Solución de problemas comunes
+
+## 🔧 API REST
+
+### Endpoints Principales
+
+```bash
+# Estado del sistema
+GET /api/v1/status
+
+# Métricas en tiempo real
+GET /api/v1/metrics
+
+# Configuración
+GET /api/v1/config
+PUT /api/v1/config
+
+# Generaciones
+GET /api/v1/generations
+GET /api/v1/generations/{id}
+
+# Crashes
+GET /api/v1/crashes
+GET /api/v1/crashes/{id}
+
+# ML Models
+GET /api/v1/ml/models
+POST /api/v1/ml/train
+```
+
+### Ejemplo de Uso
+
+```python
+import requests
+
+# Obtener estado
+response = requests.get('http://localhost:8080/api/v1/status')
+status = response.json()
+
+# Actualizar configuración
+config = {"population_size": 200, "mutation_rate": 0.4}
+response = requests.put('http://localhost:8080/api/v1/config', json=config)
+```
+
+## 🐛 Troubleshooting
+
+### Problemas Comunes
+
+1. **Error de permisos Docker**
+   ```bash
+   sudo usermod -aG docker $USER
+   newgrp docker
+   ```
+
+2. **Error de memoria insuficiente**
+   ```bash
+   sudo fallocate -l 4G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   ```
+
+3. **Error de dependencias Python**
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements_advanced.txt --force-reinstall
+   ```
+
+### Logs
+
+```bash
+# Ver logs en tiempo real
+tail -f logs/kernelhunter_advanced.log
+
+# Ver logs de Docker
+docker logs kernelhunter
+
+# Ver logs de Kubernetes
+kubectl logs -f deployment/kernelhunter -n kernelhunter
+```
+
+## 🤝 Contribución
+
+### Guías de Contribución
+
+1. Fork el repositorio
+2. Crear rama feature: `git checkout -b feature/nueva-funcionalidad`
+3. Commit cambios: `git commit -am 'Agregar nueva funcionalidad'`
+4. Push a la rama: `git push origin feature/nueva-funcionalidad`
+5. Crear Pull Request
+
+### Estándares de Código
+
+```bash
+# Formatear código
+black .
+flake8 .
+
+# Linting
+pylint kernelHunter.py advanced_*.py
+
+# Type checking
+mypy kernelHunter.py
+```
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia MIT. Ver `LICENSE` para más detalles.
+
+## 🙏 Agradecimientos
+
+- Comunidad de seguridad
+- Contribuidores de open source
+- Investigadores en fuzzing
+- Desarrolladores de herramientas de ML
+
+## 📞 Soporte
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/kernelhunter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-repo/kernelhunter/discussions)
+- **Documentación**: [Wiki del proyecto](https://github.com/your-repo/kernelhunter/wiki)
+- **Email**: support@kernelhunter.com
+
+---
+
+**KernelHunter Advanced** - Descubriendo vulnerabilidades con inteligencia artificial 🚀
+
+---
+
+## 🚀 Inicio Rápido
+
+```bash
+# 1. Clonar e instalar
+git clone https://github.com/your-repo/kernelhunter.git
+cd kernelhunter
+python3 setup_advanced.py
+
+# 2. Ejecutar
+python3 run_kernelhunter_advanced.py
+
+# 3. Acceder al dashboard
+# http://localhost:8080
+
+# 4. Monitorear
+# http://localhost:3000 (Grafana)
+```
+
+¡KernelHunter está listo para descubrir vulnerabilidades! 🎯
+
 
 
